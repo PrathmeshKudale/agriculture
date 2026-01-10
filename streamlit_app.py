@@ -9,7 +9,7 @@ st.set_page_config(page_title="GreenMitra", page_icon="🌿", layout="wide")
 
 # ⚠️ REPLACE WITH YOUR *NEW* KEYS ⚠️
 GOOGLE_API_KEY = "AIzaSyBbEXluYKFFHlkLk26SSGwMy-AIdYEcPxU"
-WEATHER_API_KEY = "03daa4ea2ddc9ec25536fe66d8631cb5"
+WEATHER_API_KEY = "4a3fc3c484c492d967514dc42f86cb40"
 
 # Configure AI
 try:
