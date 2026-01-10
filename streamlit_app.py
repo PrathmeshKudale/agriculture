@@ -1,7 +1,7 @@
 import streamlit as st
 from PIL import Image
 from gtts import gTTS
-import requests # We use this instead of google-generativeai
+import requests 
 import base64
 import json
 
@@ -13,21 +13,20 @@ st.set_page_config(
 )
 
 # ⚠️ PASTE YOUR KEYS HERE ⚠️
-GOOGLE_API_KEY = "AIzaSyC4WF9fovNmkgasMuOxs1iYJJIuZIGTv28"
-WEATHER_API_KEY = "4a3fc3c484c492d967514dc42f86cb40"
+GOOGLE_API_KEY = "PASTE_YOUR_NEW_GOOGLE_KEY_HERE"
+WEATHER_API_KEY = "PASTE_YOUR_OPENWEATHER_KEY_HERE"
 
-# --- 2. DIRECT API FUNCTION (The Fix) ---
+# --- 2. DIRECT API FUNCTION (Fixed Model Name) ---
 def analyze_image_direct(api_key, image_bytes, prompt):
     """
-    Sends image directly to Google via HTTP, bypassing the old library.
+    Direct connection using the 'latest' alias to fix 404 errors.
     """
-    # 1. URL for the Flash Model
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={api_key}"
+    # Using 'gemini-1.5-flash-latest' often resolves the "not found" issue
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key={api_key}"
     
-    # 2. Encode Image to Base64
+    # Encode Image
     base64_image = base64.b64encode(image_bytes).decode('utf-8')
     
-    # 3. Create the JSON Payload
     headers = {'Content-Type': 'application/json'}
     data = {
         "contents": [{
@@ -43,16 +42,13 @@ def analyze_image_direct(api_key, image_bytes, prompt):
         }]
     }
     
-    # 4. Send Request
     try:
         response = requests.post(url, headers=headers, json=data)
         
         if response.status_code == 200:
-            # Success! Parse the text.
             return response.json()['candidates'][0]['content']['parts'][0]['text']
         else:
-            # Failure: Return the exact error message
-            return f"Error {response.status_code}: {response.text}"
+            return f"Google Error {response.status_code}: {response.text}"
     except Exception as e:
         return f"Connection Error: {e}"
 
@@ -115,7 +111,7 @@ def login():
 def dashboard():
     with st.sidebar:
         st.title(f"👤 {st.session_state['user']}")
-        st.info("🤖 AI Brain: Direct Connection (Flash)") # Proof we are bypassing library
+        st.info("🤖 AI Brain: Flash Latest (Direct)")
         st.markdown("---")
         city = st.text_input("Village", "Kolhapur")
         w_text, w_cond = get_weather_auto(city)
@@ -141,10 +137,8 @@ def dashboard():
         if st.button("🔍 Analyze (पीक तपासा)"):
             with st.spinner("Diagnosing..."):
                 try:
-                    # 1. Get Image Bytes
                     img_bytes = file.getvalue()
                     
-                    # 2. PROMPT
                     prompt = f"""
                     Expert Agronomist. Location: {city}, Weather: {w_text}.
                     1. Disease Name. 2. Natural Remedy. 
@@ -152,12 +146,10 @@ def dashboard():
                     4. Language: {lang}.
                     """
                     
-                    # 3. RUN DIRECT API
                     res = analyze_image_direct(GOOGLE_API_KEY, img_bytes, prompt)
                     
-                    # 4. OUTPUT
                     if "Error" in res:
-                        st.error(f"❌ API Failed: {res}")
+                        st.error(f"❌ {res}")
                     else:
                         st.markdown(f'<div class="glass-card"><h3>✅ Report</h3><p>{res}</p></div>', unsafe_allow_html=True)
                         tts = gTTS(res, lang=lang_map[lang])
@@ -168,5 +160,7 @@ def dashboard():
                     st.error(f"System Error: {e}")
 
 # --- RUN ---
-if st.session_state['logged_in']: dashboard()
-else: login()login()
+if st.session_state['logged_in']:
+    dashboard()
+else:
+    login()
