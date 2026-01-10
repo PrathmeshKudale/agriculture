@@ -13,8 +13,8 @@ st.set_page_config(
 )
 
 # ⚠️ PASTE YOUR KEYS HERE ⚠️
-GOOGLE_API_KEY = "PASTE_YOUR_NEW_GOOGLE_KEY_HERE"
-WEATHER_API_KEY = "PASTE_YOUR_OPENWEATHER_KEY_HERE"
+GOOGLE_API_KEY = "AIzaSyBbEXluYKFFHlkLk26SSGwMy-AIdYEcPxU"
+WEATHER_API_KEY = "4a3fc3c484c492d967514dc42f86cb40"
 
 # --- 2. DIRECT API FUNCTIONS (No Library Needed) ---
 def analyze_image_direct(api_key, image_bytes, prompt):
