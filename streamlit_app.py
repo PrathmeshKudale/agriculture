@@ -6,7 +6,7 @@ import google.generativeai as genai
 # --- 1. CONFIGURATION ---
 # Use secrets for Cloud, fallback to string for Local
 try:
-    GOOGLE_API_KEY = st.secrets["GOOGLE_API_KEY"]
+    GOOGLE_API_KEY = st.secrets["AIzaSyBBj9OEPx9D6pfN8FvcYNy1bvsmjW3TFlA"]
 except:
     GOOGLE_API_KEY = "AIzaSyBBj9OEPx9D6pfN8FvcYNy1bvsmjW3TFlA"
 
