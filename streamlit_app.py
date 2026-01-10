@@ -13,7 +13,7 @@ st.set_page_config(
 )
 
 # ⚠️ PASTE YOUR KEYS HERE ⚠️
-GOOGLE_API_KEY = "AIzaSyCBKJrGucoWrMEQMBTPV0d1HZN5AGnje80"
+GOOGLE_API_KEY = "AIzaSyAdHP9RoBAk-pTiFuDDNRmF9jeV2q2mvAE"
 WEATHER_API_KEY = "4a3fc3c484c492d967514dc42f86cb40"
 
 # --- 2. SMART FUNCTIONS (Direct API) ---
@@ -164,4 +164,42 @@ def dashboard():
     with c1: st.write("# 🌿")
     with c2: st.title("GreenMitra Dashboard")
     
-    mode = st
+    mode = st.radio("Input:", ["📂 Upload", "📸 Camera"], horizontal=True)
+    file = None
+    if mode == "📸 Camera": file = st.camera_input("Scan")
+    else: file = st.file_uploader("Upload", type=['jpg','png','jpeg'])
+        
+    if file:
+        st.image(file, width=300)
+        
+        if st.button("🔍 Analyze (पीक तपासा)"):
+            with st.spinner("Diagnosing..."):
+                try:
+                    img_bytes = file.getvalue()
+                    
+                    prompt = f"""
+                    Expert Agronomist. Location: {city}, Weather: {w_text}.
+                    1. Disease Name. 2. Natural Remedy. 
+                    3. If {w_cond} is Rainy, warn farmer.
+                    4. Language: {lang}.
+                    """
+                    
+                    # USE THE DYNAMICALLY SELECTED MODEL
+                    res = analyze_image_direct(GOOGLE_API_KEY, selected_model, img_bytes, prompt)
+                    
+                    if "Error" in res:
+                        st.error(f"❌ {res}")
+                    else:
+                        st.markdown(f'<div class="glass-card"><h3>✅ Report</h3><p>{res}</p></div>', unsafe_allow_html=True)
+                        tts = gTTS(res, lang=lang_map[lang])
+                        tts.save("cure.mp3")
+                        st.audio("cure.mp3")
+                    
+                except Exception as e:
+                    st.error(f"System Error: {e}")
+
+# --- RUN ---
+if st.session_state['logged_in']:
+    dashboard()
+else:
+    login()
