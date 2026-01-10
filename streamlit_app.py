@@ -102,7 +102,7 @@ def login_screen():
         st.write("")
         
         email = st.text_input("📧 Email Address")
-        password = st.text_input("🔑 Password (Hint: 1234)", type="password")
+        password = st.text_input("🔑 Password", type="password")
         
         if st.button("Login Securely"):
             if not email or not password:
