@@ -1,11 +1,11 @@
 import streamlit as st
 from PIL import Image
 from gtts import gTTS
-import requests
+import requests # We use this instead of google-generativeai
 import base64
-import io
+import json
 
-# --- 1. CONFIGURATION ---
+# --- 1. SETUP ---
 st.set_page_config(
     page_title="GreenMitra",
     page_icon="🌿",
@@ -13,23 +13,22 @@ st.set_page_config(
 )
 
 # ⚠️ PASTE YOUR KEYS HERE ⚠️
-GOOGLE_API_KEY = "AIzaSyBbEXluYKFFHlkLk26SSGwMy-AIdYEcPxU"
+GOOGLE_API_KEY = "AIzaSyC4WF9fovNmkgasMuOxs1iYJJIuZIGTv28"
 WEATHER_API_KEY = "4a3fc3c484c492d967514dc42f86cb40"
 
-# --- 2. DIRECT API FUNCTIONS (No Library Needed) ---
+# --- 2. DIRECT API FUNCTION (The Fix) ---
 def analyze_image_direct(api_key, image_bytes, prompt):
     """
-    Talks directly to Google API, bypassing the installed library.
-    This fixes the '404 Model Not Found' error.
+    Sends image directly to Google via HTTP, bypassing the old library.
     """
-    # 1. Convert Image to Base64
-    base64_image = base64.b64encode(image_bytes).decode('utf-8')
-    
-    # 2. Prepare the Payload
+    # 1. URL for the Flash Model
     url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={api_key}"
     
-    headers = {'Content-Type': 'application/json'}
+    # 2. Encode Image to Base64
+    base64_image = base64.b64encode(image_bytes).decode('utf-8')
     
+    # 3. Create the JSON Payload
+    headers = {'Content-Type': 'application/json'}
     data = {
         "contents": [{
             "parts": [
@@ -44,17 +43,21 @@ def analyze_image_direct(api_key, image_bytes, prompt):
         }]
     }
     
-    # 3. Send Request
-    response = requests.post(url, headers=headers, json=data)
-    
-    if response.status_code == 200:
-        return response.json()['candidates'][0]['content']['parts'][0]['text']
-    else:
-        # Return the specific error from Google
-        return f"Error {response.status_code}: {response.text}"
+    # 4. Send Request
+    try:
+        response = requests.post(url, headers=headers, json=data)
+        
+        if response.status_code == 200:
+            # Success! Parse the text.
+            return response.json()['candidates'][0]['content']['parts'][0]['text']
+        else:
+            # Failure: Return the exact error message
+            return f"Error {response.status_code}: {response.text}"
+    except Exception as e:
+        return f"Connection Error: {e}"
 
+# --- 3. WEATHER FUNCTION ---
 def get_weather_auto(city):
-    """Gets weather or returns a Fake Backup for Demo"""
     try:
         url = f"http://api.openweathermap.org/data/2.5/weather?q={city}&appid={WEATHER_API_KEY}&units=metric"
         response = requests.get(url)
@@ -63,10 +66,9 @@ def get_weather_auto(city):
             return f"{data['weather'][0]['main']}, {data['main']['temp']}°C", data['weather'][0]['main']
     except:
         pass
-    # Backup for Demo if Key Fails
-    return "Clear Sky, 26°C", "Sunny"
+    return "Unavailable", "Clear"
 
-# --- 3. CSS STYLING ---
+# --- 4. CSS STYLING ---
 st.markdown("""
     <style>
     .stApp {
@@ -89,11 +91,11 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# --- 4. SESSION ---
+# --- 5. SESSION ---
 if 'logged_in' not in st.session_state: st.session_state['logged_in'] = False
 if 'user' not in st.session_state: st.session_state['user'] = ""
 
-# --- 5. LOGIN ---
+# --- 6. LOGIN PAGE ---
 def login():
     c1, c2, c3 = st.columns([1, 1.5, 1])
     with c2:
@@ -109,11 +111,11 @@ def login():
             else:
                 st.error("Enter Email and Numeric PIN")
 
-# --- 6. DASHBOARD ---
+# --- 7. DASHBOARD ---
 def dashboard():
     with st.sidebar:
         st.title(f"👤 {st.session_state['user']}")
-        st.info("🤖 AI Brain: Gemini Flash (Direct API)")
+        st.info("🤖 AI Brain: Direct Connection (Flash)") # Proof we are bypassing library
         st.markdown("---")
         city = st.text_input("Village", "Kolhapur")
         w_text, w_cond = get_weather_auto(city)
@@ -139,7 +141,7 @@ def dashboard():
         if st.button("🔍 Analyze (पीक तपासा)"):
             with st.spinner("Diagnosing..."):
                 try:
-                    # 1. Convert Image for API
+                    # 1. Get Image Bytes
                     img_bytes = file.getvalue()
                     
                     # 2. PROMPT
@@ -150,12 +152,12 @@ def dashboard():
                     4. Language: {lang}.
                     """
                     
-                    # 3. CALL DIRECT API (No Library)
+                    # 3. RUN DIRECT API
                     res = analyze_image_direct(GOOGLE_API_KEY, img_bytes, prompt)
                     
                     # 4. OUTPUT
-                    if "Error" in res and "400" in res:
-                        st.error("❌ Key Error: Check your Google API Key.")
+                    if "Error" in res:
+                        st.error(f"❌ API Failed: {res}")
                     else:
                         st.markdown(f'<div class="glass-card"><h3>✅ Report</h3><p>{res}</p></div>', unsafe_allow_html=True)
                         tts = gTTS(res, lang=lang_map[lang])
@@ -165,5 +167,6 @@ def dashboard():
                 except Exception as e:
                     st.error(f"System Error: {e}")
 
+# --- RUN ---
 if st.session_state['logged_in']: dashboard()
-else: login()
+else: login()login()
