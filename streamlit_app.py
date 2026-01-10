@@ -3,16 +3,16 @@ from PIL import Image
 from gtts import gTTS
 import google.generativeai as genai
 import requests
-import re  # For email validation
+import re
 
 # --- 1. SETUP ---
 st.set_page_config(
-    page_title="GreenMitra | Login",
+    page_title="GreenMitra",
     page_icon="🌿",
     layout="wide"
 )
 
-# ⚠️ PASTE KEYS HERE ⚠️
+# ⚠️ PASTE YOUR KEYS HERE ⚠️
 GOOGLE_API_KEY = "AIzaSyBOGJUsEF4aBtkgvyZ-Lhb-9Z87B6z9ziY"
 WEATHER_API_KEY = "4a3fc3c484c492d967514dc42f86cb40"
 
@@ -21,196 +21,169 @@ try:
 except:
     pass
 
-# --- 2. ADVANCED STYLING (The Attractive Part) ---
+# --- 2. CSS STYLING ---
 st.markdown("""
     <style>
-    /* 1. Background Image for the Whole App */
+    /* Background */
     .stApp {
         background: linear-gradient(rgba(255,255,255,0.7), rgba(255,255,255,0.7)), 
-                    url("https://images.unsplash.com/photo-1500382017468-9049fed747ef?q=80&w=3000&auto=format&fit=crop");
+                    url("https://images.unsplash.com/photo-1500382017468-9049fed747ef?q=80&w=3000");
         background-size: cover;
         background-attachment: fixed;
     }
-    
-    /* 2. Login Card Styling */
-    .login-card {
+    /* Login & Result Cards */
+    .glass-card {
         background-color: rgba(255, 255, 255, 0.95);
-        padding: 40px;
-        border-radius: 20px;
+        padding: 30px;
+        border-radius: 15px;
         box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
-        text-align: center;
         border-top: 6px solid #2e7d32;
-        margin-top: 50px;
     }
-    
-    /* 3. Text Styling */
-    h1 { color: #1b5e20 !important; font-weight: 800; }
-    p { font-size: 16px; color: #555; }
-    
-    /* 4. Input Fields */
-    .stTextInput > div > div > input {
-        border-radius: 10px;
-        border: 1px solid #ccc;
-        padding: 10px;
-    }
-    
-    /* 5. Green Buttons */
+    /* Buttons */
     .stButton>button {
         background-color: #2e7d32;
         color: white;
-        border-radius: 30px; /* Rounded pill shape */
-        height: 55px;
-        font-size: 20px;
+        border-radius: 30px;
+        height: 50px;
+        font-size: 18px;
         font-weight: bold;
         width: 100%;
         border: none;
         transition: 0.3s;
-        box-shadow: 0 4px 15px rgba(46, 125, 50, 0.3);
     }
-    .stButton>button:hover { 
-        background-color: #1b5e20; 
-        transform: translateY(-2px);
-    }
-    
-    /* 6. Result Box */
-    .result-box {
-        background-color: white;
-        color: black !important;
-        padding: 25px;
-        border-radius: 15px;
-        box-shadow: 0 5px 15px rgba(0,0,0,0.1);
-        border-left: 8px solid #2e7d32;
-    }
+    .stButton>button:hover { background-color: #1b5e20; }
+    /* Headers */
+    h1, h2, h3 { color: #1b5e20 !important; }
     </style>
 """, unsafe_allow_html=True)
 
-# --- 3. SESSION LOGIC ---
-if 'logged_in' not in st.session_state:
-    st.session_state['logged_in'] = False
-if 'user_name' not in st.session_state:
-    st.session_state['user_name'] = ""
-
-# --- 4. FUNCTIONS ---
-def is_valid_email(email):
-    # Simple Regex for Email Validation
-    pattern = r"^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$"
-    return re.match(pattern, email)
-
+# --- 3. HELPER FUNCTIONS ---
 def get_weather_auto(city):
+    """Auto-detect weather from City Name"""
     try:
         url = f"http://api.openweathermap.org/data/2.5/weather?q={city}&appid={WEATHER_API_KEY}&units=metric"
         response = requests.get(url)
         data = response.json()
         if response.status_code == 200:
-            return f"{data['weather'][0]['main']}, {data['main']['temp']}°C", data['weather'][0]['main']
+            cond = data['weather'][0]['main']
+            temp = data['main']['temp']
+            return f"{cond}, {temp}°C", cond
         return "Unavailable", "Clear"
     except:
         return "Unavailable", "Clear"
 
-def get_model():
-    # Model Switcher
+def get_available_models():
+    """FIX FOR 404 ERROR: Asks Google which models work"""
     try:
-        return genai.GenerativeModel('gemini-1.5-flash')
+        models = []
+        for m in genai.list_models():
+            if 'generateContent' in m.supported_generation_methods:
+                models.append(m.name)
+        return models
     except:
-        return genai.GenerativeModel('gemini-pro-vision')
+        return []
 
-# --- 5. LOGIN PAGE (THE FIX) ---
+# --- 4. SESSION STATE ---
+if 'logged_in' not in st.session_state:
+    st.session_state['logged_in'] = False
+if 'user_name' not in st.session_state:
+    st.session_state['user_name'] = ""
+
+# --- 5. PAGE: LOGIN ---
 def login_screen():
-    # Layout: 3 Columns to center the box
     c1, c2, c3 = st.columns([1, 1.5, 1])
-    
     with c2:
-        # The Beautiful Header
         st.markdown("""
-        <div class="login-card">
-            <h1 style="margin-bottom:0px;">🌿 GreenMitra</h1>
-            <p style="margin-top:5px;">AI-Powered Sustainable Farming</p>
+        <div class="glass-card" style="text-align:center;">
+            <h1>🌿 GreenMitra</h1>
+            <p>Smart Sustainable Farming Assistant</p>
         </div>
         """, unsafe_allow_html=True)
+        st.write("")
         
-        st.write("") # Spacer
+        email = st.text_input("📧 Email Address")
+        password = st.text_input("🔑 Password (Hint: 1234)", type="password")
         
-        # Inputs
-        email_input = st.text_input("📧 Email Address", placeholder="e.g. farmer@gmail.com")
-        password_input = st.text_input("🔑 Password", type="password", placeholder="Enter PIN")
-        
-        st.write("") # Spacer
-        
-        if st.button("Log In Securely"):
-            # 1. Check if Email is Empty
-            if not email_input or not password_input:
-                st.error("⚠️ Please fill in all fields.")
-            
-            # 2. Check Valid Email Format
-            elif not is_valid_email(email_input):
-                st.error("❌ Invalid Email Format! (Must have @ and .com)")
-                
-            # 3. Check Password (DEMO PASSWORD IS '1234')
-            elif password_input != "1234":
-                st.error("❌ Wrong Password! Hint: 1234")
-                
-            # 4. Success!
+        if st.button("Login Securely"):
+            if not email or not password:
+                st.error("⚠️ Enter email and password")
+            elif "@" not in email:
+                st.error("❌ Invalid Email")
+            elif password != "1234":
+                st.error("❌ Wrong Password")
             else:
-                st.success("✅ Login Successful!")
                 st.session_state['logged_in'] = True
-                st.session_state['user_name'] = email_input.split('@')[0]
+                st.session_state['user_name'] = email.split('@')[0]
                 st.rerun()
 
-# --- 6. MAIN APP (AFTER LOGIN) ---
+# --- 6. PAGE: DASHBOARD ---
 def main_dashboard():
-    # Sidebar
+    # SIDEBAR
     with st.sidebar:
         st.title(f"👤 {st.session_state['user_name']}")
+        
+        # 1. THE FIX: Model Selector
+        st.subheader("🤖 AI Brain")
+        my_models = get_available_models()
+        if my_models:
+            # Auto-pick 'flash' if available
+            idx = 0
+            for i, m in enumerate(my_models):
+                if 'flash' in m: idx = i
+            selected_model = st.selectbox("Model", my_models, index=idx)
+        else:
+            st.error("Check API Key")
+            selected_model = "models/gemini-1.5-flash"
+
+        # 2. Location & Weather
         st.markdown("---")
-        
-        # Auto Weather
         st.subheader("📍 Location")
-        city = st.text_input("Village Name", "Pune")
-        weather_text, weather_cond = get_weather_auto(city)
-        st.info(f"🌤️ Live Weather:\n{weather_text}")
+        city = st.text_input("Village", "Kolhapur")
+        w_text, w_cond = get_weather_auto(city)
+        st.info(f"🌤️ Live Weather:\n{w_text}")
         
+        # 3. Language
         st.markdown("---")
         lang_map = {"Marathi": "mr", "Hindi": "hi", "English": "en"}
-        selected_lang = st.selectbox("Language", list(lang_map.keys()))
-        lang_code = lang_map[selected_lang]
+        sel_lang = st.selectbox("Language", list(lang_map.keys()))
+        lang_code = lang_map[sel_lang]
         
         if st.button("Logout"):
             st.session_state['logged_in'] = False
             st.rerun()
 
-    # Main Area
+    # MAIN CONTENT
     c1, c2 = st.columns([1, 5])
     with c1: st.write("# 🌿")
     with c2: st.title("GreenMitra Dashboard")
     
-    st.write("---")
-    
     # Input
-    input_type = st.radio("Select Input:", ["📂 Upload Image", "📸 Live Camera"], horizontal=True)
+    input_type = st.radio("Input:", ["📂 Upload Image", "📸 Camera"], horizontal=True)
     img_file = None
     
-    if input_type == "📸 Live Camera":
+    if input_type == "📸 Camera":
         img_file = st.camera_input("Scan")
     else:
-        img_file = st.file_uploader("Upload Crop Photo", type=['jpg','png','webp'])
+        img_file = st.file_uploader("Upload Crop", type=['jpg','png','webp'])
         
     if img_file:
-        st.image(img_file, caption="Scan Preview", width=300)
+        st.image(img_file, caption="Preview", width=300)
         
-        if st.button("🔍 Analyze Crop (पीक तपासा)"):
+        if st.button("🔍 Analyze (पीक तपासा)"):
             with st.spinner("🌱 AI is diagnosing..."):
                 try:
-                    model = get_model()
+                    # Use the selected model (FIXES 404)
+                    model = genai.GenerativeModel(selected_model)
                     img = Image.open(img_file)
                     
                     prompt = f"""
                     Role: Expert Agronomist.
-                    Context: {city}, Weather: {weather_text}.
+                    Context: {city}, Weather: {w_text}.
                     Task: 
                     1. Disease Name. 
-                    2. Natural Remedy (No Chemicals).
-                    3. If {weather_cond} is Rainy, warn about spraying.
-                    4. Lang: {selected_lang}.
+                    2. Natural Remedy.
+                    3. If {w_cond} is Rainy, warn about spraying.
+                    4. Lang: {sel_lang}.
                     """
                     
                     response = model.generate_content([prompt, img])
@@ -218,7 +191,7 @@ def main_dashboard():
                     
                     # Result Card
                     st.markdown(f"""
-                    <div class="result-box">
+                    <div class="glass-card">
                         <h3>✅ Diagnosis Report</h3>
                         <p style="color:black; font-size:18px;">{res_text}</p>
                     </div>
@@ -231,7 +204,7 @@ def main_dashboard():
                 except Exception as e:
                     st.error(f"Error: {e}")
 
-# --- 7. RUNNER ---
+# --- 7. APP RUNNER ---
 if st.session_state['logged_in']:
     main_dashboard()
 else:
