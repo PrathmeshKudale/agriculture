@@ -13,7 +13,7 @@ st.set_page_config(
 )
 
 # ⚠️ PASTE YOUR KEYS HERE ⚠️
-GOOGLE_API_KEY = "AIzaSyBbEXluYKFFHlkLk26SSGwMy-AIdYEcPxU"
+GOOGLE_API_KEY = "AIzaSyC4WF9fovNmkgasMuOxs1iYJJIuZIGTv28"
 WEATHER_API_KEY = "4a3fc3c484c492d967514dc42f86cb40"
 
 # --- 2. DIRECT API FUNCTION (Fixed Model Name) ---
