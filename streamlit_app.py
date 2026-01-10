@@ -114,9 +114,14 @@ def main_dashboard():
     with st.sidebar:
         st.title(f"👤 {st.session_state['user_name']}")
         
-        # MODEL SELECTOR (Prevents 404 Error)
+        # MODEL SELECTOR (Updated list to fix errors)
         st.subheader("🤖 AI Brain")
-        model_options = ["gemini-1.5-flash", "gemini-pro", "gemini-pro-vision"]
+        model_options = [
+            "gemini-1.5-flash", 
+            "gemini-1.5-pro", 
+            "gemini-pro", 
+            "gemini-pro-vision"
+        ]
         selected_model = st.selectbox("Select Model", model_options)
         
         st.markdown("---")
@@ -179,7 +184,7 @@ def main_dashboard():
                     
                 except Exception as e:
                     if "404" in str(e):
-                        st.error("⚠️ Model Error: Please change the 'AI Brain' in the Sidebar!")
+                        st.error(f"⚠️ Model '{selected_model}' failed. Please select a different 'AI Brain' in the Sidebar!")
                     else:
                         st.error(f"Error: {e}")
 
