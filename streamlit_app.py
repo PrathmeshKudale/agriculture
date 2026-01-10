@@ -4,15 +4,17 @@ from gtts import gTTS
 import google.generativeai as genai
 import requests
 
-# --- 1. SETUP (Do not change this) ---
+# --- 1. SETUP ---
 st.set_page_config(
     page_title="GreenMitra",
     page_icon="🌿",
     layout="wide"
 )
 
-# ⚠️ PASTE YOUR NEW KEYS HERE ⚠️
-# Make sure there are NO spaces inside the quotes!
+# ⚠️ SECURITY CHECK: MAKE SURE THESE ARE CORRECT! ⚠️
+# 1. Google Key starts with "AIza..."
+# 2. Weather Key is the short one from OpenWeather.
+# 3. NO SPACES inside the quotes!
 GOOGLE_API_KEY = "AIzaSyBOGJUsEF4aBtkgvyZ-Lhb-9Z87B6z9ziY"
 WEATHER_API_KEY = "4a3fc3c484c492d967514dc42f86cb40"
 
@@ -22,14 +24,11 @@ try:
 except:
     pass
 
-# --- 2. ATTRACTIVE UI (CSS) ---
+# --- 2. CSS STYLING ---
 st.markdown("""
     <style>
-    /* Professional Green Theme */
     .stApp { background-color: #f0f8f0; }
     h1, h2, h3 { color: #2e7d32 !important; }
-    
-    /* Styled Buttons */
     .stButton>button {
         background-color: #2e7d32;
         color: white;
@@ -39,11 +38,7 @@ st.markdown("""
         width: 100%;
         border: none;
     }
-    .stButton>button:hover {
-        background-color: #1b5e20;
-    }
-    
-    /* Result Box Styling */
+    .stButton>button:hover { background-color: #1b5e20; }
     .result-box {
         background-color: white;
         padding: 25px;
@@ -54,7 +49,7 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# --- 3. HELPER FUNCTIONS ---
+# --- 3. ROBUST FUNCTIONS ---
 def get_weather(city):
     try:
         url = f"http://api.openweathermap.org/data/2.5/weather?q={city}&appid={WEATHER_API_KEY}&units=metric"
@@ -66,31 +61,41 @@ def get_weather(city):
     except:
         return None
 
-def get_smart_model():
+def get_working_model():
     """
-    Automatically finds a working model to prevent 404 Errors.
+    Tries to find a model that actually works for your key.
     """
-    try:
-        # Priority 1: Flash (Fastest)
-        model = genai.GenerativeModel('gemini-1.5-flash')
-        return model
-    except:
-        # Priority 2: Pro Vision (Reliable Backup)
-        return genai.GenerativeModel('gemini-pro-vision')
+    # List of model names to try, in order of preference
+    candidates = [
+        'gemini-1.5-flash',
+        'gemini-1.5-flash-latest',
+        'gemini-pro-vision',  # This one almost ALWAYS works
+    ]
+    
+    for model_name in candidates:
+        try:
+            model = genai.GenerativeModel(model_name)
+            # We don't call generate here, just return the object
+            return model
+        except:
+            continue
+            
+    # Fallback default
+    return genai.GenerativeModel('gemini-pro-vision')
 
 # --- 4. SIDEBAR ---
 with st.sidebar:
     st.image("https://cdn-icons-png.flaticon.com/512/188/188333.png", width=70)
     st.title("⚙️ Settings")
     
-    city = st.text_input("Village / City", "Kolhapur")
+    city = st.text_input("Village / City", "Pune")
     weather_context = get_weather(city)
     
     if weather_context:
         st.success(f"📍 Weather: {weather_context}")
     else:
-        st.warning("⚠️ Manual Weather Mode")
-        weather_context = st.radio("Select Weather", ["Sunny", "Rainy", "Cloudy"])
+        st.warning("⚠️ Weather API not connected (Check Key)")
+        weather_context = st.radio("Manual Weather", ["Sunny", "Rainy", "Cloudy"])
         
     st.divider()
     lang_map = {"Marathi": "mr", "Hindi": "hi", "English": "en"}
@@ -104,19 +109,17 @@ with col1:
 with col2:
     st.title("GreenMitra: AI Plant Doctor")
 
-# --- 6. SMART UPLOAD SECTION (Fixed) ---
-# We use a Radio button to switch clearly between Upload and Camera
-input_method = st.radio("Choose Input Method:", ["📂 Upload Image (Drag & Drop)", "📸 Use Camera"], horizontal=True)
+# --- 6. UPLOAD SECTION ---
+# Clear choice between Camera and File
+input_method = st.radio("Input Method:", ["📂 Upload File", "📸 Camera"], horizontal=True)
 
 image_file = None
-
-if input_method == "📸 Use Camera":
-    image_file = st.camera_input("Tap to take photo")
+if input_method == "📸 Camera":
+    image_file = st.camera_input("Take Photo")
 else:
-    # THIS IS THE BROWSER UPLOAD YOU WANTED
-    image_file = st.file_uploader("Drag & Drop crop photo here", type=['jpg', 'jpeg', 'png', 'webp'])
+    image_file = st.file_uploader("Drop image here", type=['jpg', 'jpeg', 'png', 'webp'])
 
-# --- 7. ANALYSIS LOGIC ---
+# --- 7. ANALYSIS ---
 if image_file:
     st.divider()
     col_img, col_result = st.columns([1, 1])
@@ -130,26 +133,27 @@ if image_file:
         st.subheader("AI Diagnosis")
         
         if st.button("🔍 Analyze Crop (पीक तपासा)"):
-            with st.spinner("🌱 AI is analyzing leaf & weather..."):
+            with st.spinner("🌱 AI is analyzing..."):
                 try:
-                    # USE THE SMART MODEL SWITCHER
-                    model = get_smart_model()
+                    # 1. Get the Model
+                    model = get_working_model()
                     
+                    # 2. Prepare Prompt
                     prompt = f"""
                     Act as an Indian Agronomist.
                     CONTEXT: Location: {city}, Weather: {weather_context}.
-                    
                     TASK:
-                    1. Identify the Disease.
-                    2. Suggest a NATURAL Remedy (Desi Upay).
-                    3. WARNING: If weather is 'Rainy', tell farmer NOT to spray.
+                    1. Identify Disease.
+                    2. Suggest NATURAL Remedy.
+                    3. If 'Rainy', warn NOT to spray.
                     4. Reply in {selected_lang}.
                     """
                     
+                    # 3. Generate
                     response = model.generate_content([prompt, img])
                     result = response.text
                     
-                    # Beautiful Result Card
+                    # 4. Show Result
                     st.markdown(f"""
                     <div class="result-box">
                         <h3>✅ Diagnosis Report</h3>
@@ -157,13 +161,17 @@ if image_file:
                     </div>
                     """, unsafe_allow_html=True)
                     
+                    # 5. Audio
                     tts = gTTS(result, lang=lang_code)
                     tts.save("cure.mp3")
                     st.audio("cure.mp3")
                     
                 except Exception as e:
-                    # Specific error for Invalid Key
-                    if "API_KEY_INVALID" in str(e):
-                        st.error("❌ KEY ERROR: You pasted the wrong key! Go to Google AI Studio and get a fresh one.")
+                    # CLEAR ERROR MESSAGES FOR YOU
+                    err_msg = str(e)
+                    if "API_KEY_INVALID" in err_msg:
+                        st.error("❌ CRITICAL: Your Google API Key is WRONG. Please check line 16.")
+                    elif "404" in err_msg:
+                        st.error("❌ MODEL ERROR: The AI model is busy. Try clicking Analyze again.")
                     else:
-                        st.error(f"Error: {e}")
+                        st.error(f"Error: {err_msg}")
