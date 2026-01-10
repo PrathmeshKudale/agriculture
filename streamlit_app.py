@@ -12,8 +12,7 @@ st.set_page_config(
 )
 
 # ⚠️ PASTE YOUR KEYS HERE ⚠️
-# Make sure there are NO SPACES at the start or end!
-GOOGLE_API_KEY = "AIzaSyArItSJJ8eMSUb7yZZPrVZuszjgZuYXWuM"
+GOOGLE_API_KEY = "AIzaSyBOGJUsEF4aBtkgvyZ-Lhb-9Z87B6z9ziY"
 WEATHER_API_KEY = "4a3fc3c484c492d967514dc42f86cb40"
 
 try:
@@ -21,22 +20,26 @@ try:
 except:
     pass
 
-# --- 2. CSS STYLING ---
+# --- 2. BEAUTIFUL DESIGN (CSS) ---
 st.markdown("""
     <style>
+    /* Background Image */
     .stApp {
         background: linear-gradient(rgba(255,255,255,0.7), rgba(255,255,255,0.7)), 
                     url("https://images.unsplash.com/photo-1500382017468-9049fed747ef?q=80&w=3000");
         background-size: cover;
         background-attachment: fixed;
     }
+    /* Login Card */
     .glass-card {
         background-color: rgba(255, 255, 255, 0.95);
-        padding: 30px;
+        padding: 40px;
         border-radius: 15px;
         box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
         border-top: 6px solid #2e7d32;
+        text-align: center;
     }
+    /* Buttons */
     .stButton>button {
         background-color: #2e7d32;
         color: white;
@@ -52,7 +55,7 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# --- 3. HELPER FUNCTIONS ---
+# --- 3. WEATHER FUNCTION ---
 def get_weather_auto(city):
     try:
         url = f"http://api.openweathermap.org/data/2.5/weather?q={city}&appid={WEATHER_API_KEY}&units=metric"
@@ -70,12 +73,12 @@ if 'logged_in' not in st.session_state:
 if 'user_name' not in st.session_state:
     st.session_state['user_name'] = ""
 
-# --- 5. PAGE: LOGIN ---
+# --- 5. LOGIN PAGE (STRICT PASSWORD) ---
 def login_screen():
     c1, c2, c3 = st.columns([1, 1.5, 1])
     with c2:
         st.markdown("""
-        <div class="glass-card" style="text-align:center;">
+        <div class="glass-card">
             <h1>🌿 GreenMitra</h1>
             <p>Smart Sustainable Farming Assistant</p>
         </div>
@@ -83,48 +86,45 @@ def login_screen():
         st.write("")
         
         email = st.text_input("📧 Email Address")
-        password = st.text_input("🔑 Password (Hint: 1234)", type="password")
+        password = st.text_input("🔑 Password", type="password")
         
         if st.button("Login Securely"):
+            # 1. Check if empty
             if not email or not password:
-                st.error("⚠️ Enter email and password")
+                st.error("⚠️ Please fill in all fields")
+            
+            # 2. Check Email Format
             elif "@" not in email:
-                st.error("❌ Invalid Email")
+                st.error("❌ Invalid Email! Use format: name@email.com")
+            
+            # 3. STRICT PASSWORD CHECK
             elif password != "1234":
-                st.error("❌ Wrong Password")
+                st.error("❌ Wrong Password! Access Denied.")
+            
+            # 4. Success
             else:
+                st.success("✅ Access Granted")
                 st.session_state['logged_in'] = True
                 st.session_state['user_name'] = email.split('@')[0]
                 st.rerun()
 
-# --- 6. PAGE: DASHBOARD ---
+# --- 6. MAIN DASHBOARD ---
 def main_dashboard():
     # SIDEBAR
     with st.sidebar:
         st.title(f"👤 {st.session_state['user_name']}")
         
-        # 1. THE FIX: Hardcoded List (Always Works)
+        # MODEL SELECTOR (Prevents 404 Error)
         st.subheader("🤖 AI Brain")
+        model_options = ["gemini-1.5-flash", "gemini-pro", "gemini-pro-vision"]
+        selected_model = st.selectbox("Select Model", model_options)
         
-        # We force these options so the dropdown NEVER disappears
-        model_options = [
-            "gemini-1.5-flash",
-            "gemini-1.5-flash-latest",
-            "gemini-pro",
-            "gemini-pro-vision"
-        ]
-        
-        selected_model = st.selectbox("Select Model", model_options, index=0)
-        st.success(f"Active: {selected_model}")
-
-        # 2. Location & Weather
         st.markdown("---")
         st.subheader("📍 Location")
         city = st.text_input("Village", "Kolhapur")
         w_text, w_cond = get_weather_auto(city)
         st.info(f"🌤️ Live Weather:\n{w_text}")
         
-        # 3. Language
         st.markdown("---")
         lang_map = {"Marathi": "mr", "Hindi": "hi", "English": "en"}
         sel_lang = st.selectbox("Language", list(lang_map.keys()))
@@ -134,12 +134,11 @@ def main_dashboard():
             st.session_state['logged_in'] = False
             st.rerun()
 
-    # MAIN CONTENT
+    # MAIN AREA
     c1, c2 = st.columns([1, 5])
     with c1: st.write("# 🌿")
     with c2: st.title("GreenMitra Dashboard")
     
-    # Input
     input_type = st.radio("Input:", ["📂 Upload Image", "📸 Camera"], horizontal=True)
     img_file = None
     
@@ -154,26 +153,21 @@ def main_dashboard():
         if st.button("🔍 Analyze (पीक तपासा)"):
             with st.spinner("🌱 AI is diagnosing..."):
                 try:
-                    # Use the selected model
                     model = genai.GenerativeModel(selected_model)
                     img = Image.open(img_file)
                     
                     prompt = f"""
-                    Role: Expert Agronomist.
-                    Context: {city}, Weather: {w_text}.
-                    Task: 
-                    1. Disease Name. 
-                    2. Natural Remedy.
-                    3. If {w_cond} is Rainy, warn about spraying.
+                    Role: Agronomist. Context: {city}, Weather: {w_text}.
+                    Task: 1. Disease Name. 2. Natural Remedy. 
+                    3. If {w_cond} is Rainy, warn about spraying. 
                     4. Lang: {sel_lang}.
                     """
                     
                     response = model.generate_content([prompt, img])
                     res_text = response.text
                     
-                    # Result Card
                     st.markdown(f"""
-                    <div class="glass-card">
+                    <div class="glass-card" style="text-align:left; color:black;">
                         <h3>✅ Diagnosis Report</h3>
                         <p style="color:black; font-size:18px;">{res_text}</p>
                     </div>
@@ -184,16 +178,12 @@ def main_dashboard():
                     st.audio("cure.mp3")
                     
                 except Exception as e:
-                    # Clean Error Message
-                    err = str(e)
-                    if "404" in err:
-                        st.error("⚠️ Model Error: Try selecting a different model from the Sidebar!")
-                    elif "API_KEY" in err:
-                        st.error("❌ API Key Error: Please check your Google Key.")
+                    if "404" in str(e):
+                        st.error("⚠️ Model Error: Please change the 'AI Brain' in the Sidebar!")
                     else:
                         st.error(f"Error: {e}")
 
-# --- 7. APP RUNNER ---
+# --- 7. RUN ---
 if st.session_state['logged_in']:
     main_dashboard()
 else:
