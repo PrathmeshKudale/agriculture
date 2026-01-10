@@ -16,13 +16,31 @@ st.set_page_config(
 GOOGLE_API_KEY = "AIzaSyCBKJrGucoWrMEQMBTPV0d1HZN5AGnje80"
 WEATHER_API_KEY = "4a3fc3c484c492d967514dc42f86cb40"
 
-# --- 2. DIRECT API FUNCTION (Fixed Model Name) ---
-def analyze_image_direct(api_key, image_bytes, prompt):
+# --- 2. SMART FUNCTIONS (Direct API) ---
+
+def get_working_models(api_key):
     """
-    Direct connection using the 'latest' alias to fix 404 errors.
+    Asks Google: "What models can I use?" to avoid 404 errors.
     """
-    # Using 'gemini-1.5-flash-latest' often resolves the "not found" issue
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key={api_key}"
+    url = f"https://generativelanguage.googleapis.com/v1beta/models?key={api_key}"
+    try:
+        response = requests.get(url)
+        if response.status_code == 200:
+            data = response.json()
+            # Filter for models that support generating content
+            models = [m['name'].replace('models/', '') for m in data.get('models', []) 
+                      if 'generateContent' in m.get('supportedGenerationMethods', [])]
+            return models
+        else:
+            return []
+    except:
+        return []
+
+def analyze_image_direct(api_key, model_name, image_bytes, prompt):
+    """
+    Direct connection to the SPECIFIC model selected.
+    """
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent?key={api_key}"
     
     # Encode Image
     base64_image = base64.b64encode(image_bytes).decode('utf-8')
@@ -111,7 +129,27 @@ def login():
 def dashboard():
     with st.sidebar:
         st.title(f"👤 {st.session_state['user']}")
-        st.info("🤖 AI Brain: Flash Latest (Direct)")
+        
+        # --- THE FIX: DYNAMIC MODEL SELECTOR ---
+        st.subheader("🤖 AI Brain")
+        
+        # 1. Get real list from Google
+        available_models = get_working_models(GOOGLE_API_KEY)
+        
+        # 2. If list works, show dropdown. If not, show backup.
+        if available_models:
+            # Try to default to Flash 1.5
+            default_idx = 0
+            for i, m in enumerate(available_models):
+                if 'flash' in m and '1.5' in m: default_idx = i
+            
+            selected_model = st.selectbox("Select Model", available_models, index=default_idx)
+            st.success("✅ Online")
+        else:
+            # Fallback if list fails (e.g. key issue)
+            st.warning("⚠️ Offline Mode (Key Error)")
+            selected_model = "gemini-1.5-flash"
+
         st.markdown("---")
         city = st.text_input("Village", "Kolhapur")
         w_text, w_cond = get_weather_auto(city)
@@ -126,41 +164,4 @@ def dashboard():
     with c1: st.write("# 🌿")
     with c2: st.title("GreenMitra Dashboard")
     
-    mode = st.radio("Input:", ["📂 Upload", "📸 Camera"], horizontal=True)
-    file = None
-    if mode == "📸 Camera": file = st.camera_input("Scan")
-    else: file = st.file_uploader("Upload", type=['jpg','png','jpeg'])
-        
-    if file:
-        st.image(file, width=300)
-        
-        if st.button("🔍 Analyze (पीक तपासा)"):
-            with st.spinner("Diagnosing..."):
-                try:
-                    img_bytes = file.getvalue()
-                    
-                    prompt = f"""
-                    Expert Agronomist. Location: {city}, Weather: {w_text}.
-                    1. Disease Name. 2. Natural Remedy. 
-                    3. If {w_cond} is Rainy, warn farmer.
-                    4. Language: {lang}.
-                    """
-                    
-                    res = analyze_image_direct(GOOGLE_API_KEY, img_bytes, prompt)
-                    
-                    if "Error" in res:
-                        st.error(f"❌ {res}")
-                    else:
-                        st.markdown(f'<div class="glass-card"><h3>✅ Report</h3><p>{res}</p></div>', unsafe_allow_html=True)
-                        tts = gTTS(res, lang=lang_map[lang])
-                        tts.save("cure.mp3")
-                        st.audio("cure.mp3")
-                    
-                except Exception as e:
-                    st.error(f"System Error: {e}")
-
-# --- RUN ---
-if st.session_state['logged_in']:
-    dashboard()
-else:
-    login()
+    mode = st
