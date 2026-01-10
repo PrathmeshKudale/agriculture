@@ -13,7 +13,7 @@ st.set_page_config(
 
 # ⚠️ PASTE KEYS HERE ⚠️
 GOOGLE_API_KEY = "AIzaSyBOGJUsEF4aBtkgvyZ-Lhb-9Z87B6z9ziY"
-WEATHER_API_KEY = "4a3fc3c484c492d967514dc42f86cb40"
+WEATHER_API_KEY = "AIzaSyBOGJUsEF4aBtkgvyZ-Lhb-9Z87B6z9ziY"
 
 # Configure AI
 try:
@@ -21,11 +21,16 @@ try:
 except:
     pass
 
-# --- 2. CSS STYLING ---
+# --- 2. CSS STYLING (FIXED INVISIBLE TEXT) ---
 st.markdown("""
     <style>
+    /* Main Background */
     .stApp { background-color: #f0f8f0; }
+    
+    /* Headers */
     h1, h2, h3 { color: #2e7d32 !important; }
+    
+    /* Buttons */
     .stButton>button {
         background-color: #2e7d32;
         color: white;
@@ -36,12 +41,19 @@ st.markdown("""
         border: none;
     }
     .stButton>button:hover { background-color: #1b5e20; }
+    
+    /* Result Box - THE FIX IS HERE */
     .result-box {
-        background-color: white;
+        background-color: #ffffff; /* White Background */
+        color: #000000 !important; /* Force BLACK Text */
         padding: 25px;
         border-radius: 12px;
         box-shadow: 0 4px 12px rgba(0,0,0,0.1);
         border-left: 6px solid #2e7d32;
+    }
+    /* Force text inside result box to be black */
+    .result-box p, .result-box h3 {
+        color: #000000 !important;
     }
     </style>
 """, unsafe_allow_html=True)
@@ -69,12 +81,12 @@ def get_available_models():
     except Exception as e:
         return []
 
-# --- 4. SIDEBAR (THE FIX) ---
+# --- 4. SIDEBAR ---
 with st.sidebar:
     st.image("https://cdn-icons-png.flaticon.com/512/188/188333.png", width=70)
     st.title("⚙️ Settings")
     
-    # 1. MODEL SELECTOR (This fixes the 404 error)
+    # 1. MODEL SELECTOR
     st.subheader("🤖 Select AI Brain")
     my_models = get_available_models()
     if my_models:
@@ -87,8 +99,8 @@ with st.sidebar:
         selected_model_name = st.selectbox("Choose Model", my_models, index=default_idx)
         st.success(f"Connected: {selected_model_name}")
     else:
-        st.error("❌ Key Error: Could not find models. Check your Google API Key.")
-        selected_model_name = "models/gemini-1.5-flash" # Backup
+        st.error("❌ Key Error: Check your Google API Key.")
+        selected_model_name = "models/gemini-1.5-flash"
 
     st.divider()
 
@@ -115,7 +127,6 @@ with col2:
     st.title("GreenMitra: AI Plant Doctor")
 
 # --- 6. UPLOAD SECTION ---
-# Clear choice between Camera and File
 input_method = st.radio("Input Method:", ["📂 Upload File", "📸 Camera"], horizontal=True)
 
 image_file = None
@@ -156,11 +167,11 @@ if image_file:
                     response = model.generate_content([prompt, img])
                     result = response.text
                     
-                    # Result Card
+                    # Result Card with Black Text
                     st.markdown(f"""
                     <div class="result-box">
                         <h3>✅ Diagnosis Report</h3>
-                        <p style="font-size:18px;">{result}</p>
+                        <p>{result}</p>
                     </div>
                     """, unsafe_allow_html=True)
                     
