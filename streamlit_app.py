@@ -10,7 +10,7 @@ GOOGLE_API_KEY = "AIzaSyCgjvuZXfh7NwVN2-gIvs17x8Bdlh0SdX4"
 
 # ⚠️ PASTE YOUR OPENWEATHER KEY HERE
 # Get it from openweathermap.org (It takes 2 mins)
-WEATHER_API_KEY = "f210a7b797413629539011d891afde00" 
+WEATHER_API_KEY = "4a3fc3c484c492d967514dc42f86cb40" 
 
 # Configure Google AI
 try:
