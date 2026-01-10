@@ -73,7 +73,7 @@ if 'logged_in' not in st.session_state:
 if 'user_name' not in st.session_state:
     st.session_state['user_name'] = ""
 
-# --- 5. LOGIN PAGE (STRICT PASSWORD) ---
+# --- 5. LOGIN PAGE (UPDATED: ANY NUMBER WORKS) ---
 def login_screen():
     c1, c2, c3 = st.columns([1, 1.5, 1])
     with c2:
@@ -86,7 +86,7 @@ def login_screen():
         st.write("")
         
         email = st.text_input("📧 Email Address")
-        password = st.text_input("🔑 Password", type="password")
+        password = st.text_input("🔑 Password (Any Number)", type="password")
         
         if st.button("Login Securely"):
             # 1. Check if empty
@@ -97,9 +97,9 @@ def login_screen():
             elif "@" not in email:
                 st.error("❌ Invalid Email! Use format: name@email.com")
             
-            # 3. STRICT PASSWORD CHECK
-            elif password != "1234":
-                st.error("❌ Wrong Password! Access Denied.")
+            # 3. NEW RULE: ANY NUMBER IS OKAY
+            elif not password.isdigit():
+                st.error("❌ Password must be a Number (PIN)")
             
             # 4. Success
             else:
