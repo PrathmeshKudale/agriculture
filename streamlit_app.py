@@ -2,49 +2,44 @@ import streamlit as st
 from PIL import Image
 from gtts import gTTS
 import google.generativeai as genai
+import io
 
 # --- 1. CONFIGURATION ---
-# Get Key from Secrets (Cloud) or use fallback (Local)
+# Try to get key from Cloud Secrets, else use the one you pasted
 try:
     GOOGLE_API_KEY = st.secrets["GOOGLE_API_KEY"]
 except:
-    GOOGLE_API_KEY = "AIzaSyBBj9OEPx9D6pfN8FvcYNy1bvsmjW3TFlA"
+    GOOGLE_API_KEY = "AIzaSyCgjvuZXfh7NwVN2-gIvs17x8Bdlh0SdX4"
 
 genai.configure(api_key=GOOGLE_API_KEY)
 
-# --- 2. SMART GENERATOR FUNCTION ---
-# This is the FIX for the 404 Error
-def get_ai_response(prompt, image):
-    try:
-        # Attempt 1: Try the fast 'Flash' model
-        model = genai.GenerativeModel('gemini-1.5-flash')
-        return model.generate_content([prompt, image])
-    except Exception:
-        # Attempt 2: If Flash fails (404), switch to 'Pro-Vision' (Stable)
-        # This handles the Cloud error automatically
-        model = genai.GenerativeModel('gemini-pro-vision')
-        return model.generate_content([prompt, image])
-
-def process_image(image_file):
+# --- 2. MOBILE IMAGE FIX ---
+def load_image(image_file):
     """
-    Fixes the 'File Path' issue by keeping image in Memory (RAM).
+    Reads image directly from memory (fixes 'File Path' error).
+    Resizes huge mobile photos to prevent timeouts.
     """
     try:
         img = Image.open(image_file)
-        # Fix orientation/color for mobile uploads
+        
+        # Convert to RGB (Fixes errors with some Android formats)
         if img.mode != 'RGB':
             img = img.convert('RGB')
+            
+        # Resize image to max 800px (Crucial for mobile speed)
+        img.thumbnail((800, 800))
         return img
     except Exception as e:
+        st.error(f"Error reading image: {e}")
         return None
 
-# --- 3. APP INTERFACE ---
+# --- 3. PAGE SETUP ---
 st.set_page_config(page_title="Agri-Mitra", page_icon="🌾")
 
 st.title("🌾 Agri-Mitra")
 st.caption("Works on Mobile & Desktop")
 
-# Sidebar Settings
+# Sidebar
 with st.sidebar:
     st.header("Settings")
     lang_map = {"Marathi": "mr", "Hindi": "hi", "English": "en"}
@@ -52,26 +47,36 @@ with st.sidebar:
     lang_code = lang_map[selected_lang]
     weather = st.radio("Weather", ["Sunny", "Rainy", "Cloudy"])
 
-# --- 4. MAIN UPLOAD ---
-st.info("📸 Upload photo / फोटो टाका")
-enable_camera = st.checkbox("Use Camera")
+# --- 4. MAIN UPLOAD SECTION ---
+st.info("📸 Upload a photo of the crop")
+
+# Allow Camera AND File Upload
+enable_camera = st.checkbox("Use Camera (Recommended for Mobile)")
+file_upload = None
 
 if enable_camera:
     file_upload = st.camera_input("Take Photo")
 else:
+    # Accept multiple mobile formats
     file_upload = st.file_uploader("Choose Image", type=['jpg', 'jpeg', 'png', 'webp'])
 
-# --- 5. MAIN LOGIC ---
+# --- 5. LOGIC ---
 if file_upload:
-    img = process_image(file_upload)
+    # Step 1: Process Image using our Fix Function
+    img = load_image(file_upload)
     
     if img:
-        st.image(img, caption="Crop Ready", use_container_width=True)
+        st.image(img, caption="Ready to Scan", use_container_width=True)
         
         if st.button("Analyze (पीक तपासा)", key="analyze_btn"):
             with st.spinner("Analyzing..."):
                 try:
-                    # Create the Prompt
+                    # Smart Model Selection
+                    try:
+                        model = genai.GenerativeModel('gemini-1.5-flash')
+                    except:
+                        model = genai.GenerativeModel('gemini-pro-vision')
+                    
                     prompt = f"""
                     Act as an Indian Agriculture Expert.
                     Context: Weather is {weather}.
@@ -81,9 +86,9 @@ if file_upload:
                     4. Reply in {selected_lang}.
                     """
                     
-                    # CALL THE SMART FUNCTION
-                    response = get_ai_response(prompt, img)
+                    response = model.generate_content([prompt, img])
                     
+                    # Display Report
                     st.success("Report Generated:")
                     st.write(response.text)
                     
@@ -93,5 +98,5 @@ if file_upload:
                     st.audio("audio.mp3")
                     
                 except Exception as e:
-                    st.error(f"Error: {e}")
-                    st.warning("Try taking the photo again.")
+                    st.error(f"Connection Error: {e}")
+                    st.warning("Try taking a photo with lower resolution if it fails.")
