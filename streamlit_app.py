@@ -57,7 +57,7 @@ with st.sidebar:
     weather = st.radio("Weather Condition", ["Sunny", "Rainy", "Cloudy"])
 
 # --- 4. MAIN APP ---
-st.title("🌾 Agri-Mitra")
+st.title("GreenMitra 🌍")
 st.caption("Theme: Sustainability & Smart Environments")
 
 col1, col2 = st.columns(2)
