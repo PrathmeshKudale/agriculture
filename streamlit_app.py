@@ -13,7 +13,7 @@ st.set_page_config(
 )
 
 # ⚠️ PASTE YOUR KEYS HERE ⚠️
-GOOGLE_API_KEY = "AIzaSyBOGJUsEF4aBtkgvyZ-Lhb-9Z87B6z9ziY"
+GOOGLE_API_KEY = "AIzaSyArItSJJ8eMSUb7yZZPrVZuszjgZuYXWuM"
 WEATHER_API_KEY = "4a3fc3c484c492d967514dc42f86cb40"
 
 try:
