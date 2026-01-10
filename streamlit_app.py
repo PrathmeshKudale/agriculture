@@ -2,101 +2,103 @@ import streamlit as st
 from PIL import Image
 from gtts import gTTS
 import google.generativeai as genai
-import io
 
 # --- 1. CONFIGURATION ---
-# Try to get key from Cloud Secrets, else use the one you pasted
+# ⚠️ REPLACE WITH YOUR NEW KEY
+GOOGLE_API_KEY = "AIzaSyCgjvuZXfh7NwVN2-gIvs17x8Bdlh0SdX4"
+
+# Configure the API
 try:
-    GOOGLE_API_KEY = st.secrets["GOOGLE_API_KEY"]
-except:
-    GOOGLE_API_KEY = "AIzaSyCgjvuZXfh7NwVN2-gIvs17x8Bdlh0SdX4"
+    genai.configure(api_key=GOOGLE_API_KEY)
+except Exception as e:
+    st.error(f"API Key Error: {e}")
 
-genai.configure(api_key=GOOGLE_API_KEY)
-
-# --- 2. MOBILE IMAGE FIX ---
-def load_image(image_file):
-    """
-    Reads image directly from memory (fixes 'File Path' error).
-    Resizes huge mobile photos to prevent timeouts.
-    """
+# --- 2. DYNAMIC MODEL FINDER (The Fix) ---
+# This function gets the REAL list of models your key allows
+def get_available_models():
     try:
-        img = Image.open(image_file)
-        
-        # Convert to RGB (Fixes errors with some Android formats)
-        if img.mode != 'RGB':
-            img = img.convert('RGB')
-            
-        # Resize image to max 800px (Crucial for mobile speed)
-        img.thumbnail((800, 800))
-        return img
+        model_list = []
+        for m in genai.list_models():
+            # We only want models that can generate content
+            if 'generateContent' in m.supported_generation_methods:
+                model_list.append(m.name)
+        return model_list
     except Exception as e:
-        st.error(f"Error reading image: {e}")
-        return None
+        return []
 
-# --- 3. PAGE SETUP ---
-st.set_page_config(page_title="Agri-Mitra", page_icon="🌾")
-
-st.title("🌾 Agri-Mitra")
-st.caption("Works on Mobile & Desktop")
-
-# Sidebar
+# --- 3. SIDEBAR ---
 with st.sidebar:
-    st.header("Settings")
-    lang_map = {"Marathi": "mr", "Hindi": "hi", "English": "en"}
+    st.title("🔧 Settings")
+    
+    # A. Model Selector (Fixes the 404 Error)
+    st.subheader("Select AI Brain")
+    available_models = get_available_models()
+    
+    if not available_models:
+        st.error("❌ No models found! Your API Key might be invalid or new. Please generate a new key.")
+        selected_model_name = "models/gemini-1.5-flash" # Fallback
+    else:
+        # We try to auto-select the best one, but you can change it
+        default_index = 0
+        for i, m in enumerate(available_models):
+            if "flash" in m:
+                default_index = i
+                break
+        selected_model_name = st.selectbox("Choose Model", available_models, index=default_index)
+        st.success(f"Connected to: {selected_model_name}")
+
+    # B. Language & Weather
+    st.divider()
+    lang_map = {"Marathi (मराठी)": "mr", "Hindi (हिंदी)": "hi", "English": "en"}
     selected_lang = st.selectbox("Language", list(lang_map.keys()))
     lang_code = lang_map[selected_lang]
-    weather = st.radio("Weather", ["Sunny", "Rainy", "Cloudy"])
-
-# --- 4. MAIN UPLOAD SECTION ---
-st.info("📸 Upload a photo of the crop")
-
-# Allow Camera AND File Upload
-enable_camera = st.checkbox("Use Camera (Recommended for Mobile)")
-file_upload = None
-
-if enable_camera:
-    file_upload = st.camera_input("Take Photo")
-else:
-    # Accept multiple mobile formats
-    file_upload = st.file_uploader("Choose Image", type=['jpg', 'jpeg', 'png', 'webp'])
-
-# --- 5. LOGIC ---
-if file_upload:
-    # Step 1: Process Image using our Fix Function
-    img = load_image(file_upload)
     
-    if img:
-        st.image(img, caption="Ready to Scan", use_container_width=True)
-        
-        if st.button("Analyze (पीक तपासा)", key="analyze_btn"):
-            with st.spinner("Analyzing..."):
-                try:
-                    # Smart Model Selection
-                    try:
-                        model = genai.GenerativeModel('gemini-1.5-flash')
-                    except:
-                        model = genai.GenerativeModel('gemini-pro-vision')
-                    
-                    prompt = f"""
-                    Act as an Indian Agriculture Expert.
-                    Context: Weather is {weather}.
-                    1. Identify the crop disease.
-                    2. Suggest a Natural Remedy.
-                    3. If weather is 'Rainy', warn not to spray.
-                    4. Reply in {selected_lang}.
-                    """
-                    
-                    response = model.generate_content([prompt, img])
-                    
-                    # Display Report
-                    st.success("Report Generated:")
-                    st.write(response.text)
-                    
-                    # Audio
-                    tts = gTTS(response.text, lang=lang_code)
-                    tts.save("audio.mp3")
-                    st.audio("audio.mp3")
-                    
-                except Exception as e:
-                    st.error(f"Connection Error: {e}")
-                    st.warning("Try taking a photo with lower resolution if it fails.")
+    weather = st.radio("Weather Condition", ["Sunny", "Rainy", "Cloudy"])
+
+# --- 4. MAIN APP ---
+st.title("GreenMitra 🌍")
+st.caption("Theme: Sustainability & Smart Environments")
+
+col1, col2 = st.columns(2)
+
+with col1:
+    st.subheader("1. Scan For Healthy & Green Farming")
+    enable_camera = st.checkbox("Use Camera")
+    image_file = st.camera_input("Take Photo") if enable_camera else st.file_uploader("Upload Image")
+    
+    if image_file:
+        img = Image.open(image_file)
+        st.image(img, caption="Crop", use_container_width=True)
+
+with col2:
+    st.subheader("2. Eco Diagnosis")
+    
+    if image_file and st.button("Analyze (पीक तपासा)", key="analyze_btn"):
+        with st.spinner("Analyzing..."):
+            try:
+                # Connect to the SPECIFIC model you selected
+                model = genai.GenerativeModel(selected_model_name)
+                
+                prompt = f"""
+                You are an Indian Agriculture Expert.
+                Context: Weather is {weather}.
+                1. Identify the disease.
+                2. Suggest a NATURAL remedy.
+                3. If weather is 'Rainy', warn NOT to spray.
+                4. Reply in {selected_lang}.
+                """
+                
+                response = model.generate_content([prompt, img])
+                result = response.text
+                
+                # Show Text
+                st.info(result)
+                
+                # Audio
+                tts = gTTS(result, lang=lang_code)
+                tts.save("cure.mp3")
+                st.audio("cure.mp3")
+                
+            except Exception as e:
+                st.error(f"Error: {e}")
+                st.warning("Tip: Try selecting a different model in the Sidebar!")
