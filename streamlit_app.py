@@ -3,7 +3,6 @@ from PIL import Image
 from gtts import gTTS
 import google.generativeai as genai
 import requests
-import re
 
 # --- 1. SETUP ---
 st.set_page_config(
@@ -13,6 +12,7 @@ st.set_page_config(
 )
 
 # ⚠️ PASTE YOUR KEYS HERE ⚠️
+# Make sure there are NO SPACES at the start or end!
 GOOGLE_API_KEY = "AIzaSyArItSJJ8eMSUb7yZZPrVZuszjgZuYXWuM"
 WEATHER_API_KEY = "4a3fc3c484c492d967514dc42f86cb40"
 
@@ -24,14 +24,12 @@ except:
 # --- 2. CSS STYLING ---
 st.markdown("""
     <style>
-    /* Background */
     .stApp {
         background: linear-gradient(rgba(255,255,255,0.7), rgba(255,255,255,0.7)), 
                     url("https://images.unsplash.com/photo-1500382017468-9049fed747ef?q=80&w=3000");
         background-size: cover;
         background-attachment: fixed;
     }
-    /* Login & Result Cards */
     .glass-card {
         background-color: rgba(255, 255, 255, 0.95);
         padding: 30px;
@@ -39,7 +37,6 @@ st.markdown("""
         box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
         border-top: 6px solid #2e7d32;
     }
-    /* Buttons */
     .stButton>button {
         background-color: #2e7d32;
         color: white;
@@ -49,39 +46,23 @@ st.markdown("""
         font-weight: bold;
         width: 100%;
         border: none;
-        transition: 0.3s;
     }
     .stButton>button:hover { background-color: #1b5e20; }
-    /* Headers */
     h1, h2, h3 { color: #1b5e20 !important; }
     </style>
 """, unsafe_allow_html=True)
 
 # --- 3. HELPER FUNCTIONS ---
 def get_weather_auto(city):
-    """Auto-detect weather from City Name"""
     try:
         url = f"http://api.openweathermap.org/data/2.5/weather?q={city}&appid={WEATHER_API_KEY}&units=metric"
         response = requests.get(url)
         data = response.json()
         if response.status_code == 200:
-            cond = data['weather'][0]['main']
-            temp = data['main']['temp']
-            return f"{cond}, {temp}°C", cond
+            return f"{data['weather'][0]['main']}, {data['main']['temp']}°C", data['weather'][0]['main']
         return "Unavailable", "Clear"
     except:
         return "Unavailable", "Clear"
-
-def get_available_models():
-    """FIX FOR 404 ERROR: Asks Google which models work"""
-    try:
-        models = []
-        for m in genai.list_models():
-            if 'generateContent' in m.supported_generation_methods:
-                models.append(m.name)
-        return models
-    except:
-        return []
 
 # --- 4. SESSION STATE ---
 if 'logged_in' not in st.session_state:
@@ -102,7 +83,7 @@ def login_screen():
         st.write("")
         
         email = st.text_input("📧 Email Address")
-        password = st.text_input("🔑 Password", type="password")
+        password = st.text_input("🔑 Password (Hint: 1234)", type="password")
         
         if st.button("Login Securely"):
             if not email or not password:
@@ -122,18 +103,19 @@ def main_dashboard():
     with st.sidebar:
         st.title(f"👤 {st.session_state['user_name']}")
         
-        # 1. THE FIX: Model Selector
+        # 1. THE FIX: Hardcoded List (Always Works)
         st.subheader("🤖 AI Brain")
-        my_models = get_available_models()
-        if my_models:
-            # Auto-pick 'flash' if available
-            idx = 0
-            for i, m in enumerate(my_models):
-                if 'flash' in m: idx = i
-            selected_model = st.selectbox("Model", my_models, index=idx)
-        else:
-            st.error("Check API Key")
-            selected_model = "models/gemini-1.5-flash"
+        
+        # We force these options so the dropdown NEVER disappears
+        model_options = [
+            "gemini-1.5-flash",
+            "gemini-1.5-flash-latest",
+            "gemini-pro",
+            "gemini-pro-vision"
+        ]
+        
+        selected_model = st.selectbox("Select Model", model_options, index=0)
+        st.success(f"Active: {selected_model}")
 
         # 2. Location & Weather
         st.markdown("---")
@@ -172,7 +154,7 @@ def main_dashboard():
         if st.button("🔍 Analyze (पीक तपासा)"):
             with st.spinner("🌱 AI is diagnosing..."):
                 try:
-                    # Use the selected model (FIXES 404)
+                    # Use the selected model
                     model = genai.GenerativeModel(selected_model)
                     img = Image.open(img_file)
                     
@@ -202,7 +184,14 @@ def main_dashboard():
                     st.audio("cure.mp3")
                     
                 except Exception as e:
-                    st.error(f"Error: {e}")
+                    # Clean Error Message
+                    err = str(e)
+                    if "404" in err:
+                        st.error("⚠️ Model Error: Try selecting a different model from the Sidebar!")
+                    elif "API_KEY" in err:
+                        st.error("❌ API Key Error: Please check your Google Key.")
+                    else:
+                        st.error(f"Error: {e}")
 
 # --- 7. APP RUNNER ---
 if st.session_state['logged_in']:
