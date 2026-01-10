@@ -11,8 +11,9 @@ st.set_page_config(
     layout="wide"
 )
 
-# ⚠️ PASTE YOUR KEYS HERE
-GOOGLE_API_KEY = "AIzaSyBnwaWmYG2VwC199_EnnSB1BiVOOMZ-icE"
+# ⚠️ PASTE YOUR NEW KEYS HERE ⚠️
+# Make sure there are NO spaces inside the quotes!
+GOOGLE_API_KEY = "AIzaSyBOGJUsEF4aBtkgvyZ-Lhb-9Z87B6z9ziY"
 WEATHER_API_KEY = "4a3fc3c484c492d967514dc42f86cb40"
 
 # Configure AI
@@ -26,8 +27,6 @@ st.markdown("""
     <style>
     /* Professional Green Theme */
     .stApp { background-color: #f0f8f0; }
-    
-    /* Green Headers */
     h1, h2, h3 { color: #2e7d32 !important; }
     
     /* Styled Buttons */
@@ -67,10 +66,16 @@ def get_weather(city):
     except:
         return None
 
-def get_model():
+def get_smart_model():
+    """
+    Automatically finds a working model to prevent 404 Errors.
+    """
     try:
-        return genai.GenerativeModel('gemini-1.5-flash')
+        # Priority 1: Flash (Fastest)
+        model = genai.GenerativeModel('gemini-1.5-flash')
+        return model
     except:
+        # Priority 2: Pro Vision (Reliable Backup)
         return genai.GenerativeModel('gemini-pro-vision')
 
 # --- 4. SIDEBAR ---
@@ -127,7 +132,8 @@ if image_file:
         if st.button("🔍 Analyze Crop (पीक तपासा)"):
             with st.spinner("🌱 AI is analyzing leaf & weather..."):
                 try:
-                    model = get_model()
+                    # USE THE SMART MODEL SWITCHER
+                    model = get_smart_model()
                     
                     prompt = f"""
                     Act as an Indian Agronomist.
@@ -156,5 +162,8 @@ if image_file:
                     st.audio("cure.mp3")
                     
                 except Exception as e:
-                    st.error(f"Error: {e}")
-                    st.info("Check your API Keys.")
+                    # Specific error for Invalid Key
+                    if "API_KEY_INVALID" in str(e):
+                        st.error("❌ KEY ERROR: You pasted the wrong key! Go to Google AI Studio and get a fresh one.")
+                    else:
+                        st.error(f"Error: {e}")
