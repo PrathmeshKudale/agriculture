@@ -6,7 +6,7 @@ import requests
 
 # --- 1. CONFIGURATION ---
 # ⚠️ Google Key (Keep this secret!)
-GOOGLE_API_KEY = "AIzaSyCgjvuZXfh7NwVN2-gIvs17x8Bdlh0SdX4"
+GOOGLE_API_KEY = "AIzaSyCESMMGf5vz_GcUDcudRW7bzfvOYarvwpw"
 
 # ⚠️ PASTE YOUR OPENWEATHER KEY HERE
 # Get it from openweathermap.org (It takes 2 mins)
