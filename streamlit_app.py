@@ -63,7 +63,7 @@ st.caption("Theme: Sustainability & Smart Environments")
 col1, col2 = st.columns(2)
 
 with col1:
-    st.subheader("1. Scan Crop")
+    st.subheader("1. Scan For Healthy & Green Farming")
     enable_camera = st.checkbox("Use Camera")
     image_file = st.camera_input("Take Photo") if enable_camera else st.file_uploader("Upload Image")
     
@@ -72,7 +72,7 @@ with col1:
         st.image(img, caption="Crop", use_container_width=True)
 
 with col2:
-    st.subheader("2. Diagnosis")
+    st.subheader("2. Eco Diagnosis")
     
     if image_file and st.button("Analyze (पीक तपासा)", key="analyze_btn"):
         with st.spinner("Analyzing..."):
