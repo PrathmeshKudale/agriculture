@@ -4,140 +4,191 @@ from gtts import gTTS
 import google.generativeai as genai
 import requests
 
-# --- 1. CONFIGURATION ---
-# ⚠️ Google Key (Keep this secret!)
-GOOGLE_API_KEY = "AIzaSyCESMMGf5vz_GcUDcudRW7bzfvOYarvwpw"
+# --- 1. SETUP & CONFIGURATION ---
+st.set_page_config(
+    page_title="GreenMitra | Smart Farming",
+    page_icon="🌿",
+    layout="wide",
+    initial_sidebar_state="expanded"
+)
 
-# ⚠️ PASTE YOUR OPENWEATHER KEY HERE
-# Get it from openweathermap.org (It takes 2 mins)
-WEATHER_API_KEY = "4a3fc3c484c492d967514dc42f86cb40" 
+# ⚠️ PASTE YOUR KEYS HERE
+GOOGLE_API_KEY = "PASTE_YOUR_NEW_GOOGLE_KEY_HERE"
+WEATHER_API_KEY = "PASTE_YOUR_OPENWEATHER_KEY_HERE"
 
-# Configure Google AI
+# Configure AI
 try:
     genai.configure(api_key=GOOGLE_API_KEY)
 except Exception as e:
     st.error(f"API Key Error: {e}")
 
-# --- 2. HELPER FUNCTIONS ---
+# --- 2. CUSTOM CSS (MAKES IT ATTRACTIVE) ---
+st.markdown("""
+    <style>
+    /* Main Background */
+    .stApp {
+        background-color: #f0f8f0;
+    }
+    /* Title Styling */
+    h1 {
+        color: #2e7d32;
+        font-family: 'Helvetica', sans-serif;
+    }
+    /* Button Styling */
+    .stButton>button {
+        background-color: #2e7d32;
+        color: white;
+        border-radius: 10px;
+        border: none;
+        padding: 10px 24px;
+        font-size: 18px;
+        width: 100%;
+        transition: 0.3s;
+    }
+    .stButton>button:hover {
+        background-color: #1b5e20;
+        color: #ffffff;
+    }
+    /* Result Card */
+    .result-card {
+        background-color: white;
+        padding: 20px;
+        border-radius: 15px;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        border-left: 5px solid #2e7d32;
+    }
+    /* Hide Streamlit Footer */
+    #MainMenu {visibility: hidden;}
+    footer {visibility: hidden;}
+    </style>
+""", unsafe_allow_html=True)
 
-# A. Dynamic Model Finder (Fixes 404 Error)
-def get_available_models():
-    try:
-        model_list = []
-        for m in genai.list_models():
-            if 'generateContent' in m.supported_generation_methods:
-                model_list.append(m.name)
-        return model_list
-    except:
-        return []
-
-# B. Weather Fetcher (New Feature!)
+# --- 3. HELPER FUNCTIONS ---
 def get_weather(city):
+    """Fetches live weather context"""
     try:
         url = f"http://api.openweathermap.org/data/2.5/weather?q={city}&appid={WEATHER_API_KEY}&units=metric"
         response = requests.get(url)
         data = response.json()
         if response.status_code == 200:
-            main = data['weather'][0]['main']
             desc = data['weather'][0]['description']
             temp = data['main']['temp']
-            return f"{main} ({desc}), {temp}°C"
-        else:
-            return None
+            return f"{desc.title()}, {temp}°C"
+        return None
     except:
         return None
 
-# --- 3. SIDEBAR SETTINGS ---
+def get_model():
+    """Finds the best available model"""
+    try:
+        for m in genai.list_models():
+            if 'generateContent' in m.supported_generation_methods:
+                if 'flash' in m.name: return genai.GenerativeModel(m.name)
+        return genai.GenerativeModel('gemini-1.5-flash')
+    except:
+        return genai.GenerativeModel('gemini-pro-vision')
+
+# --- 4. SIDEBAR (SETTINGS) ---
 with st.sidebar:
-    st.title("🔧 GreenMitra Settings")
+    st.image("https://cdn-icons-png.flaticon.com/512/1598/1598196.png", width=80)
+    st.title("⚙️ Settings")
     
-    # --- MODEL SELECTOR ---
-    st.subheader("1. AI Brain")
-    available_models = get_available_models()
-    if available_models:
-        # Auto-select Flash if available
-        index = 0
-        for i, m in enumerate(available_models):
-            if "flash" in m: index = i
-        selected_model_name = st.selectbox("Model", available_models, index=index)
+    st.subheader("📍 Location")
+    city = st.text_input("Village Name", "Kolhapur")
+    
+    # Live Weather Check
+    weather_context = get_weather(city)
+    if weather_context:
+        st.success(f"🌤️ Live: {weather_context}")
     else:
-        st.error("Invalid Google API Key")
-        selected_model_name = "models/gemini-1.5-flash"
+        st.warning("⚠️ Weather API unavailable. Using Manual.")
+        weather_context = st.selectbox("Manual Weather", ["Sunny", "Rainy", "Cloudy"])
 
     st.divider()
-
-    # --- WEATHER SELECTOR (SMART) ---
-    st.subheader("2. Location & Weather")
-    city = st.text_input("Enter Village/City Name", "Kolhapur")
     
-    # Try to fetch live weather
-    live_weather = get_weather(city)
-    
-    if live_weather:
-        st.success(f"✅ Live: {live_weather}")
-        weather_context = live_weather
-    else:
-        # Fallback to Manual if API fails or City wrong
-        if WEATHER_API_KEY == "PASTE_YOUR_OPENWEATHER_KEY_HERE":
-            st.warning("⚠️ Weather Key Missing. Using Manual Mode.")
-        else:
-            st.warning("⚠️ City not found. Selecting manually.")
-        weather_context = st.radio("Manual Weather", ["Sunny", "Rainy", "Cloudy"])
-
-    st.divider()
-
-    # --- LANGUAGE ---
-    st.subheader("3. Language")
+    st.subheader("🗣️ Language")
     lang_map = {"Marathi": "mr", "Hindi": "hi", "English": "en"}
-    selected_lang = st.selectbox("Select", list(lang_map.keys()))
+    selected_lang = st.selectbox("Select Language", list(lang_map.keys()))
     lang_code = lang_map[selected_lang]
 
-# --- 4. MAIN APP ---
-st.title("GreenMitra 🌍")
-st.caption(f"📍 Context: {city} | 🌦️ Weather: {weather_context}")
+# --- 5. MAIN INTERFACE ---
+# Hero Section
+col_logo, col_title = st.columns([1, 4])
+with col_logo:
+    st.write("") # Spacer
+    st.markdown("## 🌿")
+with col_title:
+    st.title("GreenMitra")
+    st.caption("AI-Powered Sustainable Farming Assistant")
 
-col1, col2 = st.columns(2)
+st.markdown("---")
 
-with col1:
-    st.subheader("Scan Crop")
-    enable_camera = st.checkbox("Use Camera")
-    image_file = st.camera_input("Take Photo") if enable_camera else st.file_uploader("Upload Image")
+# Input Section (Tabs for Better UX)
+tab1, tab2 = st.tabs(["📸 Camera (कॅमेरा)", "📂 Upload File (फोटो टाका)"])
+
+image_file = None
+
+with tab1:
+    st.info("Ensure the crop leaf is clearly visible.")
+    cam_img = st.camera_input("Tap to Snap")
+    if cam_img:
+        image_file = cam_img
+
+with tab2:
+    st.info("Drag and drop your image file below.")
+    up_img = st.file_uploader("Browse Files", type=['jpg', 'jpeg', 'png', 'webp'])
+    if up_img:
+        image_file = up_img
+
+# --- 6. DIAGNOSIS LOGIC ---
+if image_file:
+    # Show Image
+    st.markdown("### Your Scan:")
+    img = Image.open(image_file)
+    st.image(img, use_container_width=True, caption="Uploaded Crop")
     
-    if image_file:
-        img = Image.open(image_file)
-        st.image(img, caption="Crop Ready", use_container_width=True)
-
-with col2:
-    st.subheader("Eco Diagnosis")
-    
-    if image_file and st.button("Analyze (पीक तपासा)", key="analyze"):
-        with st.spinner("Analyzing with Live Weather Context..."):
+    # Action Button
+    if st.button("🔍 Analyze Crop Now (पीक तपासा)", key="analyze"):
+        with st.spinner("🌱 AI Doctor is analyzing leaf & weather..."):
             try:
-                model = genai.GenerativeModel(selected_model_name)
+                model = get_model()
                 
-                # The Smart Prompt
+                # Smart Prompt
                 prompt = f"""
-                Act as an Indian Agriculture Expert.
+                Act as an expert Indian Agronomist.
                 
-                CRITICAL CONTEXT:
-                - Location: {city}
+                CONTEXT:
+                - Farmer Location: {city}
                 - Live Weather: {weather_context}
                 
-                TASKS:
-                1. Identify the disease in the image.
-                2. Suggest a NATURAL remedy (Desi Upay).
-                3. WEATHER LOGIC: If weather is Rain/Rainy, warn the farmer: "Do not spray now."
-                4. Reply in {selected_lang}.
+                TASK:
+                1. **Identify the Disease** visible in the photo.
+                2. **Suggest a Natural/Organic Remedy** (No chemicals).
+                3. **Weather Warning:** If weather is 'Rainy' or 'Rain', strictly warn: "Do not spray today due to rain."
+                4. Provide the response in **{selected_lang}** language.
+                5. Keep the tone helpful and easy to understand for a farmer.
                 """
                 
                 response = model.generate_content([prompt, img])
                 result = response.text
                 
-                st.info(result)
+                # Show Result in a nice Card
+                st.markdown(f"""
+                <div class="result-card">
+                    <h3>📢 Diagnosis Report</h3>
+                    <p>{result}</p>
+                </div>
+                """, unsafe_allow_html=True)
                 
+                # Audio Player
                 tts = gTTS(result, lang=lang_code)
-                tts.save("cure.mp3")
-                st.audio("cure.mp3")
+                tts.save("advice.mp3")
+                st.audio("advice.mp3")
                 
             except Exception as e:
-                st.error(f"Error: {e}")
+                st.error(f"Analysis Failed: {e}")
+                st.info("Check your API Keys in Settings.")
+
+# --- 7. FOOTER ---
+st.markdown("---")
+st.markdown("<center>Made with ❤️ for Farmers | Buildathon 2026</center>", unsafe_allow_html=True)
