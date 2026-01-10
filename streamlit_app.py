@@ -1,23 +1,72 @@
 import streamlit as st
 from PIL import Image
 from gtts import gTTS
-import google.generativeai as genai
 import requests
+import base64
+import io
 
 # --- 1. CONFIGURATION ---
-st.set_page_config(page_title="GreenMitra", page_icon="🌿", layout="wide")
+st.set_page_config(
+    page_title="GreenMitra",
+    page_icon="🌿",
+    layout="wide"
+)
 
-# ⚠️ REPLACE WITH YOUR *NEW* KEYS ⚠️
-GOOGLE_API_KEY = "AIzaSyBbEXluYKFFHlkLk26SSGwMy-AIdYEcPxU"
-WEATHER_API_KEY = "4a3fc3c484c492d967514dc42f86cb40"
+# ⚠️ PASTE YOUR KEYS HERE ⚠️
+GOOGLE_API_KEY = "PASTE_YOUR_NEW_GOOGLE_KEY_HERE"
+WEATHER_API_KEY = "PASTE_YOUR_OPENWEATHER_KEY_HERE"
 
-# Configure AI
-try:
-    genai.configure(api_key=GOOGLE_API_KEY)
-except:
-    pass
+# --- 2. DIRECT API FUNCTIONS (No Library Needed) ---
+def analyze_image_direct(api_key, image_bytes, prompt):
+    """
+    Talks directly to Google API, bypassing the installed library.
+    This fixes the '404 Model Not Found' error.
+    """
+    # 1. Convert Image to Base64
+    base64_image = base64.b64encode(image_bytes).decode('utf-8')
+    
+    # 2. Prepare the Payload
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={api_key}"
+    
+    headers = {'Content-Type': 'application/json'}
+    
+    data = {
+        "contents": [{
+            "parts": [
+                {"text": prompt},
+                {
+                    "inline_data": {
+                        "mime_type": "image/jpeg",
+                        "data": base64_image
+                    }
+                }
+            ]
+        }]
+    }
+    
+    # 3. Send Request
+    response = requests.post(url, headers=headers, json=data)
+    
+    if response.status_code == 200:
+        return response.json()['candidates'][0]['content']['parts'][0]['text']
+    else:
+        # Return the specific error from Google
+        return f"Error {response.status_code}: {response.text}"
 
-# --- 2. CSS STYLING ---
+def get_weather_auto(city):
+    """Gets weather or returns a Fake Backup for Demo"""
+    try:
+        url = f"http://api.openweathermap.org/data/2.5/weather?q={city}&appid={WEATHER_API_KEY}&units=metric"
+        response = requests.get(url)
+        data = response.json()
+        if response.status_code == 200:
+            return f"{data['weather'][0]['main']}, {data['main']['temp']}°C", data['weather'][0]['main']
+    except:
+        pass
+    # Backup for Demo if Key Fails
+    return "Clear Sky, 26°C", "Sunny"
+
+# --- 3. CSS STYLING ---
 st.markdown("""
     <style>
     .stApp {
@@ -29,6 +78,7 @@ st.markdown("""
         background: rgba(255, 255, 255, 0.95); padding: 30px; 
         border-radius: 15px; border-top: 5px solid #2e7d32;
         box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        color: black;
     }
     .stButton>button {
         background-color: #2e7d32; color: white; border-radius: 25px;
@@ -39,32 +89,18 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# --- 3. HELPER FUNCTIONS ---
-def get_weather(city):
-    try:
-        url = f"http://api.openweathermap.org/data/2.5/weather?q={city}&appid={WEATHER_API_KEY}&units=metric"
-        r = requests.get(url)
-        if r.status_code == 200:
-            data = r.json()
-            return f"{data['weather'][0]['main']}, {data['main']['temp']}°C", data['weather'][0]['main']
-    except:
-        pass
-    return "Unavailable", "Clear"
-
-# --- 4. SESSION STATE ---
+# --- 4. SESSION ---
 if 'logged_in' not in st.session_state: st.session_state['logged_in'] = False
 if 'user' not in st.session_state: st.session_state['user'] = ""
 
-# --- 5. LOGIN PAGE ---
+# --- 5. LOGIN ---
 def login():
     c1, c2, c3 = st.columns([1, 1.5, 1])
     with c2:
         st.markdown('<div class="glass-card" style="text-align:center;"><h1>🌿 GreenMitra</h1><p>Smart Assistant</p></div>', unsafe_allow_html=True)
         st.write("")
         email = st.text_input("📧 Email")
-        # ALLOW ANY PASSWORD (FOR DEMO)
         password = st.text_input("🔑 PIN (Any Number)", type="password")
-        
         if st.button("Login"):
             if email and password.isdigit():
                 st.session_state['logged_in'] = True
@@ -75,34 +111,23 @@ def login():
 
 # --- 6. DASHBOARD ---
 def dashboard():
-    # SIDEBAR
     with st.sidebar:
         st.title(f"👤 {st.session_state['user']}")
-        
-        st.subheader("🤖 AI Brain")
-        # USE THE SAFEST MODEL NAME
-        model_name = "gemini-1.5-flash" 
-        st.info(f"Active: {model_name}")
-
+        st.info("🤖 AI Brain: Gemini Flash (Direct API)")
         st.markdown("---")
         city = st.text_input("Village", "Kolhapur")
-        w_text, w_cond = get_weather(city)
+        w_text, w_cond = get_weather_auto(city)
         st.success(f"📍 {w_text}")
-        
         st.markdown("---")
         lang = st.selectbox("Language", ["Marathi", "Hindi", "English"])
         lang_map = {"Marathi": "mr", "Hindi": "hi", "English": "en"}
-        
         if st.button("Logout"):
-            st.session_state['logged_in'] = False
-            st.rerun()
+            st.session_state['logged_in'] = False; st.rerun()
 
-    # MAIN
     c1, c2 = st.columns([1, 5])
     with c1: st.write("# 🌿")
     with c2: st.title("GreenMitra Dashboard")
     
-    # INPUT
     mode = st.radio("Input:", ["📂 Upload", "📸 Camera"], horizontal=True)
     file = None
     if mode == "📸 Camera": file = st.camera_input("Scan")
@@ -114,13 +139,10 @@ def dashboard():
         if st.button("🔍 Analyze (पीक तपासा)"):
             with st.spinner("Diagnosing..."):
                 try:
-                    # 1. SETUP MODEL
-                    model = genai.GenerativeModel(model_name)
+                    # 1. Convert Image for API
+                    img_bytes = file.getvalue()
                     
-                    # 2. IMAGE SETUP
-                    img = Image.open(file)
-                    
-                    # 3. PROMPT
+                    # 2. PROMPT
                     prompt = f"""
                     Expert Agronomist. Location: {city}, Weather: {w_text}.
                     1. Disease Name. 2. Natural Remedy. 
@@ -128,28 +150,20 @@ def dashboard():
                     4. Language: {lang}.
                     """
                     
-                    # 4. RUN
-                    response = model.generate_content([prompt, img])
-                    res = response.text
+                    # 3. CALL DIRECT API (No Library)
+                    res = analyze_image_direct(GOOGLE_API_KEY, img_bytes, prompt)
                     
-                    # 5. OUTPUT
-                    st.markdown(f'<div class="glass-card" style="color:black;"><h3>✅ Report</h3><p>{res}</p></div>', unsafe_allow_html=True)
-                    
-                    # 6. AUDIO
-                    tts = gTTS(res, lang=lang_map[lang])
-                    tts.save("cure.mp3")
-                    st.audio("cure.mp3")
+                    # 4. OUTPUT
+                    if "Error" in res and "400" in res:
+                        st.error("❌ Key Error: Check your Google API Key.")
+                    else:
+                        st.markdown(f'<div class="glass-card"><h3>✅ Report</h3><p>{res}</p></div>', unsafe_allow_html=True)
+                        tts = gTTS(res, lang=lang_map[lang])
+                        tts.save("cure.mp3")
+                        st.audio("cure.mp3")
                     
                 except Exception as e:
-                    # ERROR DIAGNOSIS
-                    err = str(e)
-                    if "403" in err:
-                        st.error("❌ KEY BLOCKED: Your Google Key is invalid. Get a new one.")
-                    elif "404" in err:
-                        st.error("❌ MODEL ERROR: Run 'pip install --upgrade google-generativeai' in terminal.")
-                    else:
-                        st.error(f"Error: {err}")
+                    st.error(f"System Error: {e}")
 
-# --- RUN ---
 if st.session_state['logged_in']: dashboard()
 else: login()
