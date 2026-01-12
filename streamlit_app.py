@@ -1,10 +1,11 @@
 import streamlit as st
 from PIL import Image
-from gtts import gTTS
 import requests 
 import base64
 import json
-import io  # For handling audio in memory
+import io
+import asyncio # Required for the new Audio Engine
+import edge_tts # The new Microsoft Audio Library
 
 # --- 1. SETUP ---
 st.set_page_config(
@@ -21,7 +22,29 @@ else:
     GOOGLE_API_KEY = st.sidebar.text_input("🔑 Enter Google API Key", type="password")
     WEATHER_API_KEY = st.sidebar.text_input("🌦️ Enter Weather API Key", type="password")
 
-# --- 3. SMART FUNCTIONS ---
+# --- 3. NEW AUDIO ENGINE (Microsoft Edge TTS) ---
+async def generate_audio_stream(text, lang_code):
+    """
+    Generates audio using Microsoft Edge TTS (Works on Cloud!).
+    """
+    # Select the best voice based on language
+    voice = "en-US-AriaNeural" # Default English
+    if lang_code == "mr":
+        voice = "mr-IN-PrabhatNeural" # Best Marathi Voice
+    elif lang_code == "hi":
+        voice = "hi-IN-SwaraNeural"   # Best Hindi Voice
+        
+    communicate = edge_tts.Communicate(text, voice)
+    audio_data = b""
+    
+    # Stream the audio to memory (No saving to disk)
+    async for chunk in communicate.stream():
+        if chunk["type"] == "audio":
+            audio_data += chunk["data"]
+            
+    return audio_data
+
+# --- 4. SMART FUNCTIONS ---
 def get_working_models(api_key):
     if not api_key: return []
     url = f"https://generativelanguage.googleapis.com/v1beta/models?key={api_key}"
@@ -60,7 +83,6 @@ def analyze_image_direct(api_key, model_name, image_bytes, prompt):
     except Exception as e:
         return f"Connection Error: {e}"
 
-# --- 4. WEATHER FUNCTION ---
 def get_weather_auto(city):
     if not WEATHER_API_KEY: return "Unavailable", "Clear"
     try:
@@ -73,7 +95,7 @@ def get_weather_auto(city):
         pass
     return "Unavailable", "Clear"
 
-# --- 5. CSS STYLING ---
+# --- 5. STYLING ---
 st.markdown("""
     <style>
     .stApp {
@@ -95,11 +117,10 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# --- 6. SESSION ---
+# --- 6. LOGIN ---
 if 'logged_in' not in st.session_state: st.session_state['logged_in'] = False
 if 'user' not in st.session_state: st.session_state['user'] = ""
 
-# --- 7. LOGIN PAGE ---
 def login():
     c1, c2, c3 = st.columns([1, 1.5, 1])
     with c2:
@@ -115,7 +136,7 @@ def login():
             else:
                 st.error("Enter Email and Numeric PIN")
 
-# --- 8. DASHBOARD ---
+# --- 7. DASHBOARD ---
 def dashboard():
     with st.sidebar:
         st.title(f"👤 {st.session_state['user']}")
@@ -167,9 +188,10 @@ def dashboard():
                     1. Disease Name. 2. Natural Remedy. 
                     3. If {w_cond} is Rainy, warn farmer.
                     4. Language: {lang}.
+                    Make the response concise (under 100 words).
                     """
                     
-                    # 1. Get Text Result
+                    # 1. Get Text Report
                     res = analyze_image_direct(GOOGLE_API_KEY, selected_model, img_bytes, prompt)
                     
                     if "Error" in res:
@@ -177,18 +199,18 @@ def dashboard():
                     else:
                         st.markdown(f'<div class="glass-card"><h3>✅ Report</h3><p>{res}</p></div>', unsafe_allow_html=True)
                         
-                        # 2. Try Audio (SAFE MODE)
+                        # 2. PRO AUDIO (Microsoft Edge TTS)
+                        # Remove markdown symbols (*, #) for cleaner audio
+                        clean_text = res.replace('*', '').replace('#', '')
+                        
                         try:
-                            tts = gTTS(res, lang=lang_map[lang])
-                            audio_bytes = io.BytesIO()
-                            tts.write_to_fp(audio_bytes)
-                            audio_bytes.seek(0)
+                            # Run the async audio generator
+                            audio_bytes = asyncio.run(generate_audio_stream(clean_text, lang_map[lang]))
                             st.audio(audio_bytes, format="audio/mp3")
                         except Exception as e:
-                            # If audio fails, print warning but DO NOT CRASH
-                            st.warning("⚠️ Audio unavailable right now (Network Issue), but diagnosis is complete above!")
-                            print(f"Audio Error: {e}")
-
+                            st.warning("⚠️ Audio Error: Please try again.")
+                            print(e)
+                    
                 except Exception as e:
                     st.error(f"System Error: {e}")
 
