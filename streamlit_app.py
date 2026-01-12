@@ -4,8 +4,8 @@ import requests
 import base64
 import json
 import io
-import asyncio 
-import edge_tts 
+import os
+import subprocess # We use this to run audio outside of Python's loop
 
 # --- 1. SETUP ---
 st.set_page_config(
@@ -22,22 +22,44 @@ else:
     GOOGLE_API_KEY = st.sidebar.text_input("🔑 Enter Google API Key", type="password")
     WEATHER_API_KEY = st.sidebar.text_input("🌦️ Enter Weather API Key", type="password")
 
-# --- 3. AUDIO ENGINE (Edge TTS) ---
-async def generate_audio_stream(text, lang_code):
+# --- 3. AUDIO ENGINE (The CLI Fix) ---
+def generate_audio_cli(text, lang_code):
+    """
+    Runs edge-tts as a system command to bypass AsyncIO errors.
+    """
     voice = "en-US-AriaNeural"
     if lang_code == "mr":
-        voice = "mr-IN-PrabhatNeural" 
+        voice = "mr-IN-PrabhatNeural"
     elif lang_code == "hi":
-        voice = "hi-IN-SwaraNeural"   
-        
-    communicate = edge_tts.Communicate(text, voice)
-    audio_data = b""
+        voice = "hi-IN-SwaraNeural"
     
-    async for chunk in communicate.stream():
-        if chunk["type"] == "audio":
-            audio_data += chunk["data"]
+    output_file = "temp_audio.mp3"
+    
+    # 1. Run the command line tool (blocks until finished)
+    # We clean the text to remove newlines which confuse the CLI
+    clean_text = text.replace('\n', ' ').replace('"', '').replace("'", "")
+    
+    try:
+        # This command runs "edge-tts" directly in the system shell
+        command = [
+            "edge-tts",
+            "--text", clean_text,
+            "--voice", voice,
+            "--write-media", output_file
+        ]
+        subprocess.run(command, check=True)
+        
+        # 2. Read the file back into memory
+        with open(output_file, "rb") as f:
+            audio_bytes = f.read()
             
-    return audio_data
+        # 3. Clean up (delete the file)
+        os.remove(output_file)
+        
+        return audio_bytes
+    except Exception as e:
+        print(f"CLI Error: {e}")
+        return None
 
 # --- 4. SMART FUNCTIONS ---
 def get_working_models(api_key):
@@ -193,22 +215,18 @@ def dashboard():
                     else:
                         st.markdown(f'<div class="glass-card"><h3>✅ Report</h3><p>{res}</p></div>', unsafe_allow_html=True)
                         
-                        # --- AUDIO FIX START ---
+                        # --- CLI AUDIO GENERATION ---
+                        # Remove markdown symbols
                         clean_text = res.replace('*', '').replace('#', '')
                         
                         try:
-                            # Create a brand new Event Loop to avoid Streamlit conflicts
-                            new_loop = asyncio.new_event_loop()
-                            asyncio.set_event_loop(new_loop)
-                            
-                            audio_bytes = new_loop.run_until_complete(generate_audio_stream(clean_text, lang_map[lang]))
-                            st.audio(audio_bytes, format="audio/mp3")
-                            
-                            new_loop.close()
-                            
+                            audio_bytes = generate_audio_cli(clean_text, lang_map[lang])
+                            if audio_bytes:
+                                st.audio(audio_bytes, format="audio/mp3")
+                            else:
+                                st.warning("⚠️ Audio skipped (Network busy)")
                         except Exception as e:
-                            st.warning(f"⚠️ Audio Error: {e}")
-                        # --- AUDIO FIX END ---
+                            print(f"Audio Error: {e}")
                     
                 except Exception as e:
                     st.error(f"System Error: {e}")
