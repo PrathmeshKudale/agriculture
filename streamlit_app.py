@@ -12,16 +12,21 @@ st.set_page_config(
     layout="wide"
 )
 
-# ⚠️ PASTE YOUR KEYS HERE ⚠️
-GOOGLE_API_KEY = "AIzaSyD8XlMwdtRfX5f6t03AvWYRfYHvBiz0SC4"
-WEATHER_API_KEY = "4a3fc3c484c492d967514dc42f86cb40"
+# --- 2. SECURE KEY HANDLING (The Fix) ---
+# This looks for keys in .streamlit/secrets.toml
+if "GOOGLE_API_KEY" in st.secrets:
+    GOOGLE_API_KEY = st.secrets["AIzaSyC5X08JaLuUCysMgMZvG6yj8EJxlODEfqw"]
+    WEATHER_API_KEY = st.secrets["4a3fc3c484c492d967514dc42f86cb40"]
+else:
+    # Fallback for Demo: If no secrets file, show input boxes (Safe Mode)
+    st.warning("⚠️ Running in Safe Mode: Keys not found in secrets.toml")
+    GOOGLE_API_KEY = st.sidebar.text_input("🔑 Enter Google API Key", type="password")
+    WEATHER_API_KEY = st.sidebar.text_input("🌦️ Enter Weather API Key", type="password")
 
-# --- 2. SMART FUNCTIONS (Direct API) ---
+# --- 3. SMART FUNCTIONS ---
 
 def get_working_models(api_key):
-    """
-    Asks Google: "What models can I use?" to avoid 404 errors.
-    """
+    if not api_key: return []
     url = f"https://generativelanguage.googleapis.com/v1beta/models?key={api_key}"
     try:
         response = requests.get(url)
@@ -37,32 +42,21 @@ def get_working_models(api_key):
         return []
 
 def analyze_image_direct(api_key, model_name, image_bytes, prompt):
-    """
-    Direct connection to the SPECIFIC model selected.
-    """
+    if not api_key: return "Please enter an API Key first."
+    
     url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent?key={api_key}"
-    
-    # Encode Image
     base64_image = base64.b64encode(image_bytes).decode('utf-8')
-    
     headers = {'Content-Type': 'application/json'}
     data = {
         "contents": [{
             "parts": [
                 {"text": prompt},
-                {
-                    "inline_data": {
-                        "mime_type": "image/jpeg",
-                        "data": base64_image
-                    }
-                }
+                {"inline_data": {"mime_type": "image/jpeg", "data": base64_image}}
             ]
         }]
     }
-    
     try:
         response = requests.post(url, headers=headers, json=data)
-        
         if response.status_code == 200:
             return response.json()['candidates'][0]['content']['parts'][0]['text']
         else:
@@ -70,8 +64,9 @@ def analyze_image_direct(api_key, model_name, image_bytes, prompt):
     except Exception as e:
         return f"Connection Error: {e}"
 
-# --- 3. WEATHER FUNCTION ---
+# --- 4. WEATHER FUNCTION ---
 def get_weather_auto(city):
+    if not WEATHER_API_KEY: return "Unavailable", "Clear"
     try:
         url = f"http://api.openweathermap.org/data/2.5/weather?q={city}&appid={WEATHER_API_KEY}&units=metric"
         response = requests.get(url)
@@ -82,7 +77,7 @@ def get_weather_auto(city):
         pass
     return "Unavailable", "Clear"
 
-# --- 4. CSS STYLING ---
+# --- 5. CSS STYLING ---
 st.markdown("""
     <style>
     .stApp {
@@ -93,8 +88,7 @@ st.markdown("""
     .glass-card {
         background: rgba(255, 255, 255, 0.95); padding: 30px; 
         border-radius: 15px; border-top: 5px solid #2e7d32;
-        box-shadow: 0 4px 15px rgba(0,0,0,0.1);
-        color: black;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.1); color: black;
     }
     .stButton>button {
         background-color: #2e7d32; color: white; border-radius: 25px;
@@ -105,11 +99,11 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# --- 5. SESSION ---
+# --- 6. SESSION ---
 if 'logged_in' not in st.session_state: st.session_state['logged_in'] = False
 if 'user' not in st.session_state: st.session_state['user'] = ""
 
-# --- 6. LOGIN PAGE ---
+# --- 7. LOGIN PAGE ---
 def login():
     c1, c2, c3 = st.columns([1, 1.5, 1])
     with c2:
@@ -125,29 +119,25 @@ def login():
             else:
                 st.error("Enter Email and Numeric PIN")
 
-# --- 7. DASHBOARD ---
+# --- 8. DASHBOARD ---
 def dashboard():
     with st.sidebar:
         st.title(f"👤 {st.session_state['user']}")
         
-        # --- THE FIX: DYNAMIC MODEL SELECTOR ---
         st.subheader("🤖 AI Brain")
-        
-        # 1. Get real list from Google
         available_models = get_working_models(GOOGLE_API_KEY)
         
-        # 2. If list works, show dropdown. If not, show backup.
         if available_models:
-            # Try to default to Flash 1.5
             default_idx = 0
             for i, m in enumerate(available_models):
                 if 'flash' in m and '1.5' in m: default_idx = i
-            
             selected_model = st.selectbox("Select Model", available_models, index=default_idx)
             st.success("✅ Online")
         else:
-            # Fallback if list fails (e.g. key issue)
-            st.warning("⚠️ Offline Mode (Key Error)")
+            if not GOOGLE_API_KEY:
+                st.error("❌ Key Missing")
+            else:
+                st.warning("⚠️ Offline (Check Key)")
             selected_model = "gemini-1.5-flash"
 
         st.markdown("---")
@@ -176,15 +166,12 @@ def dashboard():
             with st.spinner("Diagnosing..."):
                 try:
                     img_bytes = file.getvalue()
-                    
                     prompt = f"""
                     Expert Agronomist. Location: {city}, Weather: {w_text}.
                     1. Disease Name. 2. Natural Remedy. 
                     3. If {w_cond} is Rainy, warn farmer.
                     4. Language: {lang}.
                     """
-                    
-                    # USE THE DYNAMICALLY SELECTED MODEL
                     res = analyze_image_direct(GOOGLE_API_KEY, selected_model, img_bytes, prompt)
                     
                     if "Error" in res:
@@ -198,8 +185,5 @@ def dashboard():
                 except Exception as e:
                     st.error(f"System Error: {e}")
 
-# --- RUN ---
-if st.session_state['logged_in']:
-    dashboard()
-else:
-    login()
+if st.session_state['logged_in']: dashboard()
+else: login()
