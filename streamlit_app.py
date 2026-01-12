@@ -27,17 +27,15 @@ async def generate_audio_stream(text, lang_code):
     """
     Generates audio using Microsoft Edge TTS (Works on Cloud!).
     """
-    # Select the best voice based on language
-    voice = "en-US-AriaNeural" # Default English
+    voice = "en-US-AriaNeural" # Default
     if lang_code == "mr":
-        voice = "mr-IN-PrabhatNeural" # Best Marathi Voice
+        voice = "mr-IN-PrabhatNeural" # Marathi
     elif lang_code == "hi":
-        voice = "hi-IN-SwaraNeural"   # Best Hindi Voice
+        voice = "hi-IN-SwaraNeural"   # Hindi
         
     communicate = edge_tts.Communicate(text, voice)
     audio_data = b""
     
-    # Stream the audio to memory (No saving to disk)
     async for chunk in communicate.stream():
         if chunk["type"] == "audio":
             audio_data += chunk["data"]
@@ -199,14 +197,18 @@ def dashboard():
                     else:
                         st.markdown(f'<div class="glass-card"><h3>✅ Report</h3><p>{res}</p></div>', unsafe_allow_html=True)
                         
-                        # 2. PRO AUDIO (Microsoft Edge TTS)
-                        # Remove markdown symbols (*, #) for cleaner audio
+                        # 2. PRO AUDIO (Microsoft Edge TTS - WITH LOOP FIX)
                         clean_text = res.replace('*', '').replace('#', '')
                         
                         try:
-                            # Run the async audio generator
-                            audio_bytes = asyncio.run(generate_audio_stream(clean_text, lang_map[lang]))
+                            # --- THE FIX IS HERE ---
+                            # Create a NEW event loop for this thread to avoid Streamlit conflicts
+                            loop = asyncio.new_event_loop()
+                            asyncio.set_event_loop(loop)
+                            
+                            audio_bytes = loop.run_until_complete(generate_audio_stream(clean_text, lang_map[lang]))
                             st.audio(audio_bytes, format="audio/mp3")
+                            
                         except Exception as e:
                             st.warning("⚠️ Audio Error: Please try again.")
                             print(e)
