@@ -2,4 +2,4 @@ streamlit
 google-generativeai
 gTTS
 Pillow
-edge-tts
+edge-tts 
