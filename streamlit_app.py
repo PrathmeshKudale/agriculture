@@ -15,8 +15,8 @@ st.set_page_config(
 # --- 2. SECURE KEY HANDLING (The Fix) ---
 # This looks for keys in .streamlit/secrets.toml
 if "GOOGLE_API_KEY" in st.secrets:
-    GOOGLE_API_KEY = st.secrets["AIzaSyC5X08JaLuUCysMgMZvG6yj8EJxlODEfqw"]
-    WEATHER_API_KEY = st.secrets["4a3fc3c484c492d967514dc42f86cb40"]
+    GOOGLE_API_KEY = st.secrets["GOOGLE_API_KEY"]
+    WEATHER_API_KEY = st.secrets["WEATHER_API_KEY"]
 else:
     # Fallback for Demo: If no secrets file, show input boxes (Safe Mode)
     st.warning("⚠️ Running in Safe Mode: Keys not found in secrets.toml")
