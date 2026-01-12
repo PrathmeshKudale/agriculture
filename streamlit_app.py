@@ -4,7 +4,7 @@ from gtts import gTTS
 import requests 
 import base64
 import json
-import io  # New import for memory handling
+import io  # For handling audio in memory
 
 # --- 1. SETUP ---
 st.set_page_config(
@@ -22,7 +22,6 @@ else:
     WEATHER_API_KEY = st.sidebar.text_input("🌦️ Enter Weather API Key", type="password")
 
 # --- 3. SMART FUNCTIONS ---
-
 def get_working_models(api_key):
     if not api_key: return []
     url = f"https://generativelanguage.googleapis.com/v1beta/models?key={api_key}"
@@ -169,6 +168,8 @@ def dashboard():
                     3. If {w_cond} is Rainy, warn farmer.
                     4. Language: {lang}.
                     """
+                    
+                    # 1. Get Text Result
                     res = analyze_image_direct(GOOGLE_API_KEY, selected_model, img_bytes, prompt)
                     
                     if "Error" in res:
@@ -176,14 +177,18 @@ def dashboard():
                     else:
                         st.markdown(f'<div class="glass-card"><h3>✅ Report</h3><p>{res}</p></div>', unsafe_allow_html=True)
                         
-                        # --- THE FIX: AUDIO IN MEMORY ---
-                        # Instead of saving to "cure.mp3", we write to RAM
-                        tts = gTTS(res, lang=lang_map[lang])
-                        audio_bytes = io.BytesIO()
-                        tts.write_to_fp(audio_bytes)
-                        audio_bytes.seek(0)
-                        st.audio(audio_bytes, format="audio/mp3")
-                    
+                        # 2. Try Audio (SAFE MODE)
+                        try:
+                            tts = gTTS(res, lang=lang_map[lang])
+                            audio_bytes = io.BytesIO()
+                            tts.write_to_fp(audio_bytes)
+                            audio_bytes.seek(0)
+                            st.audio(audio_bytes, format="audio/mp3")
+                        except Exception as e:
+                            # If audio fails, print warning but DO NOT CRASH
+                            st.warning("⚠️ Audio unavailable right now (Network Issue), but diagnosis is complete above!")
+                            print(f"Audio Error: {e}")
+
                 except Exception as e:
                     st.error(f"System Error: {e}")
 
