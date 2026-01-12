@@ -4,6 +4,7 @@ from gtts import gTTS
 import requests 
 import base64
 import json
+import io  # New import for memory handling
 
 # --- 1. SETUP ---
 st.set_page_config(
@@ -12,14 +13,11 @@ st.set_page_config(
     layout="wide"
 )
 
-# --- 2. SECURE KEY HANDLING (The Fix) ---
-# This looks for keys in .streamlit/secrets.toml
+# --- 2. SECURE KEY HANDLING ---
 if "GOOGLE_API_KEY" in st.secrets:
     GOOGLE_API_KEY = st.secrets["GOOGLE_API_KEY"]
     WEATHER_API_KEY = st.secrets["WEATHER_API_KEY"]
 else:
-    # Fallback for Demo: If no secrets file, show input boxes (Safe Mode)
-    st.warning("⚠️ Running in Safe Mode: Keys not found in secrets.toml")
     GOOGLE_API_KEY = st.sidebar.text_input("🔑 Enter Google API Key", type="password")
     WEATHER_API_KEY = st.sidebar.text_input("🌦️ Enter Weather API Key", type="password")
 
@@ -32,7 +30,6 @@ def get_working_models(api_key):
         response = requests.get(url)
         if response.status_code == 200:
             data = response.json()
-            # Filter for models that support generating content
             models = [m['name'].replace('models/', '') for m in data.get('models', []) 
                       if 'generateContent' in m.get('supportedGenerationMethods', [])]
             return models
@@ -125,7 +122,11 @@ def dashboard():
         st.title(f"👤 {st.session_state['user']}")
         
         st.subheader("🤖 AI Brain")
-        available_models = get_working_models(GOOGLE_API_KEY)
+        if not GOOGLE_API_KEY:
+            st.warning("⚠️ Enter Key Above")
+            available_models = []
+        else:
+            available_models = get_working_models(GOOGLE_API_KEY)
         
         if available_models:
             default_idx = 0
@@ -134,10 +135,6 @@ def dashboard():
             selected_model = st.selectbox("Select Model", available_models, index=default_idx)
             st.success("✅ Online")
         else:
-            if not GOOGLE_API_KEY:
-                st.error("❌ Key Missing")
-            else:
-                st.warning("⚠️ Offline (Check Key)")
             selected_model = "gemini-1.5-flash"
 
         st.markdown("---")
@@ -178,9 +175,14 @@ def dashboard():
                         st.error(f"❌ {res}")
                     else:
                         st.markdown(f'<div class="glass-card"><h3>✅ Report</h3><p>{res}</p></div>', unsafe_allow_html=True)
+                        
+                        # --- THE FIX: AUDIO IN MEMORY ---
+                        # Instead of saving to "cure.mp3", we write to RAM
                         tts = gTTS(res, lang=lang_map[lang])
-                        tts.save("cure.mp3")
-                        st.audio("cure.mp3")
+                        audio_bytes = io.BytesIO()
+                        tts.write_to_fp(audio_bytes)
+                        audio_bytes.seek(0)
+                        st.audio(audio_bytes, format="audio/mp3")
                     
                 except Exception as e:
                     st.error(f"System Error: {e}")
