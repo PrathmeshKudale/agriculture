@@ -4,8 +4,8 @@ import requests
 import base64
 import json
 import io
-import asyncio # Required for the new Audio Engine
-import edge_tts # The new Microsoft Audio Library
+import asyncio 
+import edge_tts 
 
 # --- 1. SETUP ---
 st.set_page_config(
@@ -22,16 +22,13 @@ else:
     GOOGLE_API_KEY = st.sidebar.text_input("🔑 Enter Google API Key", type="password")
     WEATHER_API_KEY = st.sidebar.text_input("🌦️ Enter Weather API Key", type="password")
 
-# --- 3. NEW AUDIO ENGINE (Microsoft Edge TTS) ---
+# --- 3. AUDIO ENGINE (Edge TTS) ---
 async def generate_audio_stream(text, lang_code):
-    """
-    Generates audio using Microsoft Edge TTS (Works on Cloud!).
-    """
-    voice = "en-US-AriaNeural" # Default
+    voice = "en-US-AriaNeural"
     if lang_code == "mr":
-        voice = "mr-IN-PrabhatNeural" # Marathi
+        voice = "mr-IN-PrabhatNeural" 
     elif lang_code == "hi":
-        voice = "hi-IN-SwaraNeural"   # Hindi
+        voice = "hi-IN-SwaraNeural"   
         
     communicate = edge_tts.Communicate(text, voice)
     audio_data = b""
@@ -189,7 +186,6 @@ def dashboard():
                     Make the response concise (under 100 words).
                     """
                     
-                    # 1. Get Text Report
                     res = analyze_image_direct(GOOGLE_API_KEY, selected_model, img_bytes, prompt)
                     
                     if "Error" in res:
@@ -197,21 +193,22 @@ def dashboard():
                     else:
                         st.markdown(f'<div class="glass-card"><h3>✅ Report</h3><p>{res}</p></div>', unsafe_allow_html=True)
                         
-                        # 2. PRO AUDIO (Microsoft Edge TTS - WITH LOOP FIX)
+                        # --- AUDIO FIX START ---
                         clean_text = res.replace('*', '').replace('#', '')
                         
                         try:
-                            # --- THE FIX IS HERE ---
-                            # Create a NEW event loop for this thread to avoid Streamlit conflicts
-                            loop = asyncio.new_event_loop()
-                            asyncio.set_event_loop(loop)
+                            # Create a brand new Event Loop to avoid Streamlit conflicts
+                            new_loop = asyncio.new_event_loop()
+                            asyncio.set_event_loop(new_loop)
                             
-                            audio_bytes = loop.run_until_complete(generate_audio_stream(clean_text, lang_map[lang]))
+                            audio_bytes = new_loop.run_until_complete(generate_audio_stream(clean_text, lang_map[lang]))
                             st.audio(audio_bytes, format="audio/mp3")
                             
+                            new_loop.close()
+                            
                         except Exception as e:
-                            st.warning("⚠️ Audio Error: Please try again.")
-                            print(e)
+                            st.warning(f"⚠️ Audio Error: {e}")
+                        # --- AUDIO FIX END ---
                     
                 except Exception as e:
                     st.error(f"System Error: {e}")
