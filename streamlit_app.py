@@ -2,10 +2,8 @@ import streamlit as st
 from PIL import Image
 import requests 
 import base64
-import json
 import io
-import os
-import subprocess # We use this to run audio outside of Python's loop
+from gtts import gTTS
 
 # --- 1. SETUP ---
 st.set_page_config(
@@ -17,53 +15,17 @@ st.set_page_config(
 # --- 2. SECURE KEY HANDLING ---
 if "GOOGLE_API_KEY" in st.secrets:
     GOOGLE_API_KEY = st.secrets["GOOGLE_API_KEY"]
+else:
+    st.error("🚨 Critical Error: Google API Key is missing in Secrets!")
+    st.stop()
+
+if "WEATHER_API_KEY" in st.secrets:
     WEATHER_API_KEY = st.secrets["WEATHER_API_KEY"]
 else:
-    GOOGLE_API_KEY = st.sidebar.text_input("🔑 Enter Google API Key", type="password")
-    WEATHER_API_KEY = st.sidebar.text_input("🌦️ Enter Weather API Key", type="password")
+    WEATHER_API_KEY = ""
 
-# --- 3. AUDIO ENGINE (The CLI Fix) ---
-def generate_audio_cli(text, lang_code):
-    """
-    Runs edge-tts as a system command to bypass AsyncIO errors.
-    """
-    voice = "en-US-AriaNeural"
-    if lang_code == "mr":
-        voice = "mr-IN-PrabhatNeural"
-    elif lang_code == "hi":
-        voice = "hi-IN-SwaraNeural"
-    
-    output_file = "temp_audio.mp3"
-    
-    # 1. Run the command line tool (blocks until finished)
-    # We clean the text to remove newlines which confuse the CLI
-    clean_text = text.replace('\n', ' ').replace('"', '').replace("'", "")
-    
-    try:
-        # This command runs "edge-tts" directly in the system shell
-        command = [
-            "edge-tts",
-            "--text", clean_text,
-            "--voice", voice,
-            "--write-media", output_file
-        ]
-        subprocess.run(command, check=True)
-        
-        # 2. Read the file back into memory
-        with open(output_file, "rb") as f:
-            audio_bytes = f.read()
-            
-        # 3. Clean up (delete the file)
-        os.remove(output_file)
-        
-        return audio_bytes
-    except Exception as e:
-        print(f"CLI Error: {e}")
-        return None
-
-# --- 4. SMART FUNCTIONS ---
+# --- 3. SMART FUNCTIONS ---
 def get_working_models(api_key):
-    if not api_key: return []
     url = f"https://generativelanguage.googleapis.com/v1beta/models?key={api_key}"
     try:
         response = requests.get(url)
@@ -72,14 +34,11 @@ def get_working_models(api_key):
             models = [m['name'].replace('models/', '') for m in data.get('models', []) 
                       if 'generateContent' in m.get('supportedGenerationMethods', [])]
             return models
-        else:
-            return []
     except:
-        return []
+        pass
+    return []
 
 def analyze_image_direct(api_key, model_name, image_bytes, prompt):
-    if not api_key: return "Please enter an API Key first."
-    
     url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent?key={api_key}"
     base64_image = base64.b64encode(image_bytes).decode('utf-8')
     headers = {'Content-Type': 'application/json'}
@@ -112,7 +71,7 @@ def get_weather_auto(city):
         pass
     return "Unavailable", "Clear"
 
-# --- 5. STYLING ---
+# --- 4. STYLING ---
 st.markdown("""
     <style>
     .stApp {
@@ -134,7 +93,7 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# --- 6. LOGIN ---
+# --- 5. LOGIN ---
 if 'logged_in' not in st.session_state: st.session_state['logged_in'] = False
 if 'user' not in st.session_state: st.session_state['user'] = ""
 
@@ -153,17 +112,13 @@ def login():
             else:
                 st.error("Enter Email and Numeric PIN")
 
-# --- 7. DASHBOARD ---
+# --- 6. DASHBOARD ---
 def dashboard():
     with st.sidebar:
         st.title(f"👤 {st.session_state['user']}")
         
         st.subheader("🤖 AI Brain")
-        if not GOOGLE_API_KEY:
-            st.warning("⚠️ Enter Key Above")
-            available_models = []
-        else:
-            available_models = get_working_models(GOOGLE_API_KEY)
+        available_models = get_working_models(GOOGLE_API_KEY)
         
         if available_models:
             default_idx = 0
@@ -173,6 +128,7 @@ def dashboard():
             st.success("✅ Online")
         else:
             selected_model = "gemini-1.5-flash"
+            st.warning("⚠️ Using Default Model")
 
         st.markdown("---")
         city = st.text_input("Village", "Kolhapur")
@@ -200,12 +156,18 @@ def dashboard():
             with st.spinner("Diagnosing..."):
                 try:
                     img_bytes = file.getvalue()
+                    
+                    # --- UPDATED PROMPT: DETAILED MODE ---
                     prompt = f"""
-                    Expert Agronomist. Location: {city}, Weather: {w_text}.
-                    1. Disease Name. 2. Natural Remedy. 
-                    3. If {w_cond} is Rainy, warn farmer.
-                    4. Language: {lang}.
-                    Make the response concise (under 100 words).
+                    You are an expert Indian Agronomist. 
+                    CONTEXT: Location: {city}, Weather: {w_text}.
+                    
+                    Analyze this crop image and provide a DETAILED report in {lang}:
+                    1. **Disease Identification:** Name the disease or pest accurately.
+                    2. **Symptoms:** Briefly describe what you see.
+                    3. **Natural Remedy:** Provide organic/home solutions (Neem oil, etc.).
+                    4. **Prevention:** How to stop it coming back.
+                    5. **Weather Alert:** If the weather ({w_cond}) is rainy/cloudy, give specific advice on spraying.
                     """
                     
                     res = analyze_image_direct(GOOGLE_API_KEY, selected_model, img_bytes, prompt)
@@ -214,19 +176,15 @@ def dashboard():
                         st.error(f"❌ {res}")
                     else:
                         st.markdown(f'<div class="glass-card"><h3>✅ Report</h3><p>{res}</p></div>', unsafe_allow_html=True)
-                        
-                        # --- CLI AUDIO GENERATION ---
-                        # Remove markdown symbols
-                        clean_text = res.replace('*', '').replace('#', '')
-                        
                         try:
-                            audio_bytes = generate_audio_cli(clean_text, lang_map[lang])
-                            if audio_bytes:
-                                st.audio(audio_bytes, format="audio/mp3")
-                            else:
-                                st.warning("⚠️ Audio skipped (Network busy)")
-                        except Exception as e:
-                            print(f"Audio Error: {e}")
+                            clean_text = res.replace('*', '').replace('#', '')
+                            tts = gTTS(clean_text, lang=lang_map[lang])
+                            audio_bytes = io.BytesIO()
+                            tts.write_to_fp(audio_bytes)
+                            audio_bytes.seek(0)
+                            st.audio(audio_bytes, format="audio/mp3")
+                        except Exception:
+                            st.info("ℹ️ Audio output is optimized for Localhost.")
                     
                 except Exception as e:
                     st.error(f"System Error: {e}")
