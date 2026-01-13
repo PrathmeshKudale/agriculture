@@ -93,25 +93,6 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# --- 5. LOGIN ---
-if 'logged_in' not in st.session_state: st.session_state['logged_in'] = False
-if 'user' not in st.session_state: st.session_state['user'] = ""
-
-def login():
-    c1, c2, c3 = st.columns([1, 1.5, 1])
-    with c2:
-        st.markdown('<div class="glass-card" style="text-align:center;"><h1>🌿 GreenMitra</h1><p>Smart Assistant</p></div>', unsafe_allow_html=True)
-        st.write("")
-        email = st.text_input("📧 Email")
-        password = st.text_input("🔑 PIN (Any Number)", type="password")
-        if st.button("Login"):
-            if email and password.isdigit():
-                st.session_state['logged_in'] = True
-                st.session_state['user'] = email.split('@')[0]
-                st.rerun()
-            else:
-                st.error("Enter Email and Numeric PIN")
-
 # --- 6. DASHBOARD ---
 def dashboard():
     with st.sidebar:
