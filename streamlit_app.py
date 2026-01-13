@@ -93,10 +93,10 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# --- 6. DASHBOARD ---
+# --- 5. DASHBOARD (Direct Access) ---
 def dashboard():
     with st.sidebar:
-        st.title(f"👤 {st.session_state['user']}")
+        st.title("👤 Farmer") # Default Name
         
         st.subheader("🤖 AI Brain")
         available_models = get_working_models(GOOGLE_API_KEY)
@@ -118,8 +118,8 @@ def dashboard():
         st.markdown("---")
         lang = st.selectbox("Language", ["Marathi", "Hindi", "English"])
         lang_map = {"Marathi": "mr", "Hindi": "hi", "English": "en"}
-        if st.button("Logout"):
-            st.session_state['logged_in'] = False; st.rerun()
+        
+        # Removed Logout Button
 
     c1, c2 = st.columns([1, 5])
     with c1: st.write("# 🌿")
@@ -138,7 +138,7 @@ def dashboard():
                 try:
                     img_bytes = file.getvalue()
                     
-                    # --- UPDATED PROMPT: 120-300 Words ---
+                    # --- PROMPT: 120-300 Words ---
                     prompt = f"""
                     You are an expert Indian Agronomist. 
                     CONTEXT: Location: {city}, Weather: {w_text}.
@@ -172,5 +172,6 @@ def dashboard():
                 except Exception as e:
                     st.error(f"System Error: {e}")
 
-if st.session_state['logged_in']: dashboard()
-else: login()
+# --- RUN DIRECTLY ---
+if __name__ == "__main__":
+    dashboard()
