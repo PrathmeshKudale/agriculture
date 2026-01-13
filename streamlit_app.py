@@ -157,17 +157,19 @@ def dashboard():
                 try:
                     img_bytes = file.getvalue()
                     
-                    # --- UPDATED PROMPT: DETAILED MODE ---
+                    # --- UPDATED PROMPT: 120-300 Words ---
                     prompt = f"""
                     You are an expert Indian Agronomist. 
                     CONTEXT: Location: {city}, Weather: {w_text}.
                     
-                    Analyze this crop image and provide a DETAILED report in {lang}:
-                    1. **Disease Identification:** Name the disease or pest accurately.
-                    2. **Symptoms:** Briefly describe what you see.
-                    3. **Natural Remedy:** Provide organic/home solutions (Neem oil, etc.).
-                    4. **Prevention:** How to stop it coming back.
-                    5. **Weather Alert:** If the weather ({w_cond}) is rainy/cloudy, give specific advice on spraying.
+                    Analyze this crop image and provide a report in {lang}.
+                    **Strict Requirement:** The response must be between 120 and 300 words.
+                    
+                    Cover these points:
+                    1. **Disease Identification:** Name the disease/pest.
+                    2. **Symptoms:** Brief description.
+                    3. **Natural Remedy:** Organic/home solutions.
+                    4. **Weather Advice:** Specific advice based on {w_cond}.
                     """
                     
                     res = analyze_image_direct(GOOGLE_API_KEY, selected_model, img_bytes, prompt)
