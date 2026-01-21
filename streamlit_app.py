@@ -17,8 +17,10 @@ st.set_page_config(
 if "GOOGLE_API_KEY" in st.secrets:
     GOOGLE_API_KEY = st.secrets["GOOGLE_API_KEY"]
 else:
-    st.error("🚨 Critical Error: Google API Key is missing!")
-    st.stop()
+    # Fallback for local testing if secrets not set
+    # st.error("🚨 Critical Error: Google API Key is missing!")
+    # st.stop()
+    GOOGLE_API_KEY = "" # Allow app to load to show UI, but AI will fail
 
 if "WEATHER_API_KEY" in st.secrets:
     WEATHER_API_KEY = st.secrets["WEATHER_API_KEY"]
@@ -26,7 +28,6 @@ else:
     WEATHER_API_KEY = ""
 
 # --- 3. DATABASE OF SCHEMES (Mock Data) ---
-# In a real app, this would come from a Live Government API.
 SCHEMES_DB = {
     "Maharashtra": [
         {"name": "MahaDBT Farmer Scheme", "benefit": "Subsidies for tractors and drip irrigation.", "link": "https://mahadbt.maharashtra.gov.in/"},
@@ -62,7 +63,7 @@ def get_weather(city):
     return "Unavailable", "Clear", 25
 
 def analyze_image_ai(api_key, image_bytes, prompt):
-    # This is your existing AI function
+    if not api_key: return "⚠️ API Key Missing. Check Secrets."
     url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={api_key}"
     base64_image = base64.b64encode(image_bytes).decode('utf-8')
     headers = {'Content-Type': 'application/json'}
@@ -79,16 +80,56 @@ def analyze_image_ai(api_key, image_bytes, prompt):
         if response.status_code == 200:
             return response.json()['candidates'][0]['content']['parts'][0]['text']
         else:
-            return "Error analyzing image."
+            return "Error analyzing image. Please try again."
     except:
         return "Connection Error."
 
 # --- 5. APP UI ---
 def main():
+    # --- CSS STYLING (FIXED FOR VISIBILITY) ---
+    st.markdown("""
+        <style>
+        /* Force the main app background to light blue */
+        .stApp { 
+            background-color: #f0f8ff; 
+        }
+        
+        /* FORCE ALL TEXT TO BLACK to fix the "White on White" issue */
+        .stMarkdown, .stText, p, div, span, label, li {
+            color: #000000 !important;
+        }
+
+        /* Card Style */
+        .glass-card { 
+            background: white; 
+            padding: 20px; 
+            border-radius: 10px; 
+            border-left: 5px solid #2e7d32; 
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1); 
+            color: black !important;
+        }
+
+        /* Headings specific color */
+        h1, h2, h3, h4, h5, h6 { 
+            color: #1b5e20 !important; 
+        }
+        
+        /* Metric/Big Numbers */
+        [data-testid="stMetricValue"] {
+            color: #1b5e20 !important;
+        }
+        
+        /* Input fields text */
+        input {
+            color: black !important;
+        }
+        </style>
+    """, unsafe_allow_html=True)
+
     # --- SIDEBAR ---
     with st.sidebar:
         st.title("🌾 GreenMitra")
-        st.write("Jai Kisan! (Farmer's Best Friend)")
+        st.markdown("**Jai Kisan! (Farmer's Best Friend)**")
         
         # Profile Settings
         st.header("⚙️ Profile")
@@ -119,30 +160,33 @@ def main():
         if file:
             st.image(file, width=300)
             if st.button("🔍 Diagnose Crop"):
-                with st.spinner("Consulting AI Expert..."):
-                    img_bytes = file.getvalue()
-                    prompt = f"""
-                    Act as an expert Indian Agronomist. Language: {lang}.
-                    Location: {city}, Weather: {w_text}.
-                    1. Name the Disease.
-                    2. Natural/Organic Remedy.
-                    3. Chemical Remedy (only if urgent).
-                    4. Weather Warning if weather is {w_cond}.
-                    Keep it simple and direct for a farmer.
-                    """
-                    res = analyze_image_ai(GOOGLE_API_KEY, img_bytes, prompt)
-                    st.markdown(f'<div class="glass-card">{res}</div>', unsafe_allow_html=True)
-                    
-                    # Audio
-                    try:
-                        clean_text = res.replace('*', '').replace('#', '')
-                        tts = gTTS(clean_text, lang=lang_map[lang])
-                        audio_bytes = io.BytesIO()
-                        tts.write_to_fp(audio_bytes)
-                        audio_bytes.seek(0)
-                        st.audio(audio_bytes, format="audio/mp3")
-                    except:
-                        st.warning("Audio unavailable on cloud.")
+                if not GOOGLE_API_KEY:
+                    st.error("❌ Google API Key missing. Please check App Settings > Secrets.")
+                else:
+                    with st.spinner("Consulting AI Expert..."):
+                        img_bytes = file.getvalue()
+                        prompt = f"""
+                        Act as an expert Indian Agronomist. Language: {lang}.
+                        Location: {city}, Weather: {w_text}.
+                        1. Name the Disease.
+                        2. Natural/Organic Remedy.
+                        3. Chemical Remedy (only if urgent).
+                        4. Weather Warning if weather is {w_cond}.
+                        Keep it simple and direct for a farmer.
+                        """
+                        res = analyze_image_ai(GOOGLE_API_KEY, img_bytes, prompt)
+                        st.markdown(f'<div class="glass-card">{res}</div>', unsafe_allow_html=True)
+                        
+                        # Audio
+                        try:
+                            clean_text = res.replace('*', '').replace('#', '')
+                            tts = gTTS(clean_text, lang=lang_map[lang])
+                            audio_bytes = io.BytesIO()
+                            tts.write_to_fp(audio_bytes)
+                            audio_bytes.seek(0)
+                            st.audio(audio_bytes, format="audio/mp3")
+                        except:
+                            st.info("ℹ️ Audio optimized for Localhost.")
 
     # === TAB 2: DAILY PLANNER (New Feature) ===
     with tab2:
@@ -196,26 +240,14 @@ def main():
         
         c1, c2 = st.columns(2)
         with c1:
-            st.subheader("🛒 Direct-to-Consumer Market")
+            st.subheader("🛒 Direct-to-Consumer")
             st.caption("Sell without middlemen (Coming Soon)")
             st.button("List My Crop for Sale")
             
         with c2:
-            st.subheader("🚁 Drone Rental Service")
+            st.subheader("🚁 Drone Rental")
             st.caption("Rent a drone for spraying medicine (Coming Soon)")
             st.button("Find Drone Pilot Nearby")
-
-# --- CSS STYLING ---
-st.markdown("""
-    <style>
-    .stApp { background-color: #f0f8ff; }
-    .glass-card { 
-        background: white; padding: 20px; border-radius: 10px; 
-        border-left: 5px solid #2e7d32; box-shadow: 0 2px 5px rgba(0,0,0,0.1); 
-    }
-    h1, h2, h3 { color: #1b5e20; }
-    </style>
-""", unsafe_allow_html=True)
 
 if __name__ == "__main__":
     main()
