@@ -3,4 +3,5 @@ google-generativeai
 gTTS
 Pillow
 edge-tts 
-duckduckgo-search
+requests
+feedparser
