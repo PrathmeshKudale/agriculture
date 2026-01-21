@@ -56,7 +56,7 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# --- 4. CORE FUNCTIONS (News, Weather, Image) ---
+# --- 4. CORE FUNCTIONS ---
 def fetch_latest_schemes():
     try:
         feed_url = "https://news.google.com/rss/search?q=India+Agriculture+Schemes+Government+announce+launch+when:30d&hl=en-IN&gl=IN&ceid=IN:en"
@@ -79,47 +79,42 @@ def analyze_crop(api_key, image_bytes, prompt):
         return response.text
     except Exception as e: return f"Error: {e}"
 
-# --- 5. CHATBOT LOGIC (THE NEW PART) ---
+# --- 5. CHATBOT LOGIC (DEBUG MODE) ---
 def farmer_chatbot():
-    # 1. Initialize Chat History if not present
     if "messages" not in st.session_state:
         st.session_state.messages = [
-            {"role": "assistant", "content": "Namaste! I am GreenMitra AI. Ask me anything about farming, seeds, or diseases."}
+            {"role": "assistant", "content": "Namaste! I am GreenMitra AI. Ask me about your farm."}
         ]
 
-    # 2. Display Previous Messages
     for message in st.session_state.messages:
         with st.chat_message(message["role"]):
             st.markdown(message["content"])
 
-    # 3. Handle New User Input
-    if prompt := st.chat_input("Type your question here (e.g., Best fertilizer for rice?)..."):
-        # Add User Message to UI
+    if prompt := st.chat_input("Type your question here..."):
         st.session_state.messages.append({"role": "user", "content": prompt})
         with st.chat_message("user"):
             st.markdown(prompt)
 
-        # Generate AI Response
         with st.chat_message("assistant"):
             with st.spinner("Thinking..."):
                 try:
-                    # STRICT SYSTEM INSTRUCTION FOR FARMER BOT
-                    system_prompt = f"""
-                    You are 'GreenMitra', an expert Indian Agriculture Assistant.
-                    - Answer ONLY farming-related questions (Crops, Diseases, Weather, Government Schemes).
-                    - If the user asks about movies, cricket, or politics, politely say you only know farming.
-                    - Keep answers SIMPLE, short, and practical for a farmer.
-                    - User Question: {prompt}
-                    """
+                    # System Prompt
+                    system_prompt = f"Act as an Indian Agriculture Expert. User Question: {prompt}"
                     
+                    # Direct Call
                     model = genai.GenerativeModel('gemini-1.5-flash')
                     response = model.generate_content(system_prompt)
                     ai_reply = response.text
                     
                     st.markdown(ai_reply)
                     st.session_state.messages.append({"role": "assistant", "content": ai_reply})
+                    
                 except Exception as e:
-                    st.error("Network Error. Please try again.")
+                    # --- SHOWS REAL ERROR NOW ---
+                    error_msg = f"⚠️ System Error: {str(e)}"
+                    st.error(error_msg)
+                    if "400" in str(e) or "API key" in str(e):
+                        st.warning("💡 Tip: Your Google API Key has expired. Please update it in Secrets.")
 
 # --- 6. MAIN APP LAYOUT ---
 def main():
@@ -127,12 +122,10 @@ def main():
     with c1: st.write("## 🌿 AI")
     with c2: st.write("## GreenMitra: Next-Gen")
     
-    # ADDED THE 4TH TAB HERE
     tabs = st.tabs(["📸 Crop Doctor", "🚀 Live Schemes", "🤖 Ask AI (Chat)", "📅 Smart Planner"])
 
-    # === TAB 1: CROP DOCTOR ===
     with tabs[0]:
-        st.markdown('<div class="glass-card"><h4>🩺 AI Plant Diagnosis</h4><p>Upload a leaf photo.</p></div>', unsafe_allow_html=True)
+        st.markdown('<div class="glass-card"><h4>🩺 AI Plant Diagnosis</h4></div>', unsafe_allow_html=True)
         col1, col2 = st.columns([1, 1])
         with col1:
             mode = st.radio("Select Input", ["Upload File", "Camera"], horizontal=True)
@@ -141,7 +134,7 @@ def main():
             else: file = st.file_uploader("Upload Image", type=['jpg','png'])
         with col2:
             if file:
-                st.image(file, use_column_width=True, caption="Analyzing...")
+                st.image(file, width=200)
                 if st.button("Diagnose Now"):
                     with st.spinner("AI is analyzing..."):
                         img_bytes = file.getvalue()
@@ -149,78 +142,28 @@ def main():
                         res = analyze_crop(GOOGLE_API_KEY, img_bytes, prompt)
                         st.markdown(f'<div class="glass-card"><b>✅ Diagnosis:</b><br>{res}</div>', unsafe_allow_html=True)
 
-    # === TAB 2: LIVE SCHEMES ===
     with tabs[1]:
         st.markdown('<div class="glass-card"><h4>📡 Live Google News Radar</h4></div>', unsafe_allow_html=True)
         if st.button("🔄 Scan Google News"):
             with st.spinner("Scanning..."):
                 latest_news = fetch_latest_schemes()
                 st.markdown(f'<div class="glass-card">{latest_news}</div>', unsafe_allow_html=True)
-                
-       # --- REPLACING THE OLD SCHEMES LIST WITH THIS BIG DATABASE ---
-        st.markdown("### 🏛️ Active Schemes Database (All India)")
-        
-        schemes = [
-            {
-                "name": "PM-KISAN Samman Nidhi", 
-                "tag": "Central Govt", 
-                "desc": "₹6,000 per year income support for all landholding farmers (paid in 3 installments)."
-            },
-            {
-                "name": "Pradhan Mantri Fasal Bima Yojana (PMFBY)", 
-                "tag": "Insurance", 
-                "desc": "Crop insurance scheme with lowest premium (2% for Kharif, 1.5% for Rabi) against natural calamities."
-            },
-            {
-                "name": "Kisan Credit Card (KCC)", 
-                "tag": "Loan / Credit", 
-                "desc": "Short-term credit for crops at low interest rates (4% if repaid timely)."
-            },
-            {
-                "name": "Namo Shetkari MahaSanman Nidhi", 
-                "tag": "Maharashtra", 
-                "desc": "Additional ₹6,000 per year specifically for farmers in Maharashtra (Total ₹12k with PM-KISAN)."
-            },
-            {
-                "name": "Pradhan Mantri Krishi Sinchai Yojana (PMKSY)", 
-                "tag": "Irrigation", 
-                "desc": "Subsidies for drip/sprinkler irrigation systems. Motto: 'Har Khet Ko Pani'."
-            },
-            {
-                "name": "Soil Health Card Scheme", 
-                "tag": "Soil Health", 
-                "desc": "Free soil testing and report card to help farmers choose the right fertilizers."
-            },
-            {
-                "name": "e-NAM (National Agriculture Market)", 
-                "tag": "Market / Mandi", 
-                "desc": "Online trading platform to sell crops to buyers across India for better prices."
-            },
-            {
-                "name": "Paramparagat Krishi Vikas Yojana (PKVY)", 
-                "tag": "Organic Farming", 
-                "desc": "Financial assistance of ₹50,000 per hectare for adopting organic farming."
-            }
-        ]
-        
-        # Displaying them in cards
-        for s in schemes:
-            st.markdown(f"""
-            <div class="glass-card" style="padding: 15px; border-left: 5px solid #2e7d32;">
-                <h5 style="margin:0;">{s['name']} 
-                    <span style="background:#e8f5e9; padding:2px 8px; border-radius:10px; font-size:12px; border: 1px solid #2e7d32; float:right;">{s['tag']}</span>
-                </h5>
-                <p style="margin:5px 0 0 0; font-size:14px; color:#333 !important;">{s['desc']}</p>
-            </div>
-            """, unsafe_allow_html=True)
 
-    # === TAB 3: AI CHATBOT (NEW FEATURE) ===
+        st.markdown("### 🏛️ Famous Schemes")
+        schemes = [
+            {"name": "PM-KISAN", "tag": "Income", "desc": "₹6,000/year for all farmers."},
+            {"name": "PMFBY", "tag": "Insurance", "desc": "Crop insurance with low premium."},
+            {"name": "Kisan Credit Card", "tag": "Loan", "desc": "Low interest loans (4%)."}
+        ]
+        for s in schemes:
+            st.markdown(f"""<div class="glass-card" style="padding:15px; border-left:5px solid #2e7d32;">
+                <h5>{s['name']} <span style="float:right; font-size:12px; background:#e8f5e9; padding:2px 5px;">{s['tag']}</span></h5>
+                <p style="font-size:14px; margin:0;">{s['desc']}</p></div>""", unsafe_allow_html=True)
+
     with tabs[2]:
-        st.markdown('<div class="glass-card"><h4>🤖 Farmer Chat Assistant</h4><p>Chat with AI about your farm problems.</p></div>', unsafe_allow_html=True)
-        # This runs the chatbot function we created above
+        st.markdown('<div class="glass-card"><h4>🤖 Farmer Chat Assistant</h4></div>', unsafe_allow_html=True)
         farmer_chatbot()
 
-    # === TAB 4: PLANNER ===
     with tabs[3]:
         st.markdown('<div class="glass-card"><h4>📅 Lifecycle Manager</h4></div>', unsafe_allow_html=True)
         c1, c2 = st.columns(2)
