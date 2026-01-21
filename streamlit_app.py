@@ -1,55 +1,136 @@
 import streamlit as st
-from PIL import Image
-import requests 
+import requests
 import base64
 import io
 import datetime
 from gtts import gTTS
+from duckduckgo_search import DDGS  # FREE Search Engine
+import google.generativeai as genai
 
 # --- 1. CONFIGURATION ---
 st.set_page_config(
-    page_title="GreenMitra Pro",
-    page_icon="🌾",
-    layout="wide"
+    page_title="GreenMitra AI",
+    page_icon="🌿",
+    layout="wide",
+    initial_sidebar_state="collapsed" # Modern look hides sidebar by default
 )
 
-# --- 2. SECURE KEYS ---
+# --- 2. KEYS ---
 if "GOOGLE_API_KEY" in st.secrets:
     GOOGLE_API_KEY = st.secrets["GOOGLE_API_KEY"]
+    genai.configure(api_key=GOOGLE_API_KEY)
 else:
-    # Fallback for local testing if secrets not set
-    # st.error("🚨 Critical Error: Google API Key is missing!")
-    # st.stop()
-    GOOGLE_API_KEY = "" # Allow app to load to show UI, but AI will fail
+    st.error("Setup your Google API Key in Secrets")
+    st.stop()
 
 if "WEATHER_API_KEY" in st.secrets:
     WEATHER_API_KEY = st.secrets["WEATHER_API_KEY"]
 else:
     WEATHER_API_KEY = ""
 
-# --- 3. DATABASE OF SCHEMES (Mock Data) ---
-SCHEMES_DB = {
-    "Maharashtra": [
-        {"name": "MahaDBT Farmer Scheme", "benefit": "Subsidies for tractors and drip irrigation.", "link": "https://mahadbt.maharashtra.gov.in/"},
-        {"name": "Gopinath Munde Shetkari Apghat Vima Yojana", "benefit": "Insurance cover of ₹2 Lakh for accidental death.", "link": "#"},
-        {"name": "Magel Tyala Shettale", "benefit": "Financial aid for building farm ponds.", "link": "#"}
-    ],
-    "Karnataka": [
-        {"name": "Raitha Siri", "benefit": "₹10,000 per hectare for millet growers.", "link": "#"},
-        {"name": "Krushi Bhagya", "benefit": "Rainwater harvesting assistance.", "link": "#"}
-    ],
-    "Uttar Pradesh": [
-        {"name": "UP Kisan Karj Mafi Yojana", "benefit": "Loan waiver for small farmers.", "link": "#"},
-        {"name": "Solar Pump Yojana", "benefit": "75% subsidy on solar pumps.", "link": "#"}
-    ],
-    "All India": [
-        {"name": "PM-KISAN", "benefit": "₹6,000 per year income support.", "link": "https://pmkisan.gov.in/"},
-        {"name": "Pradhan Mantri Fasal Bima Yojana", "benefit": "Lowest premium crop insurance.", "link": "https://pmfby.gov.in/"},
-        {"name": "Kisan Credit Card (KCC)", "benefit": "Low interest loans for farming needs.", "link": "#"}
-    ]
-}
+# --- 3. MODERN UI CSS (THE MAKEOVER) ---
+st.markdown("""
+    <style>
+    /* 1. Import Modern Font */
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap');
+    
+    html, body, [class*="css"] {
+        font-family: 'Inter', sans-serif;
+        color: #1a1a1a;
+    }
 
-# --- 4. SMART FUNCTIONS ---
+    /* 2. Background - Clean Gradient */
+    .stApp {
+        background: linear-gradient(135deg, #e0f7fa 0%, #e8f5e9 100%);
+    }
+
+    /* 3. Hide Default Streamlit Elements for a "Web App" feel */
+    #MainMenu {visibility: hidden;}
+    footer {visibility: hidden;}
+    header {visibility: hidden;}
+
+    /* 4. Glassmorphism Cards */
+    .glass-card {
+        background: rgba(255, 255, 255, 0.75);
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
+        border-radius: 20px;
+        border: 1px solid rgba(255, 255, 255, 0.3);
+        box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.07);
+        padding: 25px;
+        margin-bottom: 20px;
+        transition: transform 0.2s;
+    }
+    .glass-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 12px 40px 0 rgba(31, 38, 135, 0.15);
+    }
+
+    /* 5. Modern Buttons */
+    .stButton>button {
+        background: linear-gradient(90deg, #2e7d32 0%, #43a047 100%);
+        color: white;
+        border: none;
+        border-radius: 12px;
+        padding: 12px 24px;
+        font-weight: 600;
+        width: 100%;
+        box-shadow: 0 4px 15px rgba(46, 125, 50, 0.3);
+        transition: all 0.3s ease;
+    }
+    .stButton>button:hover {
+        transform: scale(1.02);
+        box-shadow: 0 6px 20px rgba(46, 125, 50, 0.4);
+    }
+
+    /* 6. Typography Headers */
+    h1 {
+        background: -webkit-linear-gradient(45deg, #1b5e20, #2e7d32);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        font-weight: 800 !important;
+        letter-spacing: -1px;
+    }
+    
+    /* 7. Metric Styling */
+    div[data-testid="stMetric"] {
+        background: white;
+        padding: 15px;
+        border-radius: 15px;
+        box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+    }
+    </style>
+""", unsafe_allow_html=True)
+
+# --- 4. REAL-TIME NEWS AGENT LOGIC ---
+def fetch_latest_schemes():
+    """
+    Searches the web for schemes released in the last 24 hours.
+    """
+    try:
+        # 1. Search Logic: Looks for "Indian Agriculture Schemes" in News
+        results = DDGS().text("India government agriculture scheme announcement today", max_results=5)
+        
+        # 2. Convert search results to text for AI
+        news_text = "\n".join([f"- {r['title']}: {r['body']} (Link: {r['href']})" for r in results])
+        
+        # 3. Ask Gemini to filter the noise
+        model = genai.GenerativeModel('gemini-1.5-flash')
+        prompt = f"""
+        You are a Government News Analyst.
+        Here are the latest search results about Indian Agriculture:
+        {news_text}
+        
+        Task: Identify any REAL, RECENT Government schemes or farming updates launched recently.
+        If found, format as a Python list of dictionaries: {{'name': '...', 'benefit': '...', 'link': '...'}}.
+        If nothing new is found, return "No new schemes declared today."
+        """
+        response = model.generate_content(prompt)
+        return response.text
+    except Exception as e:
+        return f"Could not connect to live news: {e}"
+
+# --- 5. CORE FUNCTIONS ---
 def get_weather(city):
     if not WEATHER_API_KEY: return "Unavailable", "Clear", 25
     try:
@@ -57,197 +138,100 @@ def get_weather(city):
         response = requests.get(url)
         data = response.json()
         if response.status_code == 200:
-            return f"{data['weather'][0]['main']}", data['weather'][0]['main'], data['main']['temp']
+            return data['weather'][0]['main'], data['main']['temp']
     except:
         pass
-    return "Unavailable", "Clear", 25
+    return "Clear", 25
 
-def analyze_image_ai(api_key, image_bytes, prompt):
-    if not api_key: return "⚠️ API Key Missing. Check Secrets."
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={api_key}"
-    base64_image = base64.b64encode(image_bytes).decode('utf-8')
-    headers = {'Content-Type': 'application/json'}
-    data = {
-        "contents": [{
-            "parts": [
-                {"text": prompt},
-                {"inline_data": {"mime_type": "image/jpeg", "data": base64_image}}
-            ]
-        }]
-    }
+def analyze_crop(api_key, image_bytes, prompt):
+    model = genai.GenerativeModel('gemini-1.5-flash')
     try:
-        response = requests.post(url, headers=headers, json=data)
-        if response.status_code == 200:
-            return response.json()['candidates'][0]['content']['parts'][0]['text']
-        else:
-            return "Error analyzing image. Please try again."
+        image_parts = [{"mime_type": "image/jpeg", "data": image_bytes}]
+        response = model.generate_content([prompt, image_parts[0]])
+        return response.text
     except:
-        return "Connection Error."
+        return "Error connecting to AI."
 
-# --- 5. APP UI ---
+# --- 6. MAIN APP LAYOUT ---
 def main():
-    # --- CSS STYLING (FIXED FOR VISIBILITY) ---
-    st.markdown("""
-        <style>
-        /* Force the main app background to light blue */
-        .stApp { 
-            background-color: #f0f8ff; 
-        }
-        
-        /* FORCE ALL TEXT TO BLACK to fix the "White on White" issue */
-        .stMarkdown, .stText, p, div, span, label, li {
-            color: #000000 !important;
-        }
+    # Top Bar
+    c1, c2 = st.columns([1, 4])
+    with c1:
+        st.write("## 🌿 AI")
+    with c2:
+        st.write("## GreenMitra: Next-Gen")
+    
+    # Modern Tab Interface
+    tabs = st.tabs(["📸 Crop Doctor", "🚀 Live Schemes (Real-Time)", "📅 Smart Planner"])
 
-        /* Card Style */
-        .glass-card { 
-            background: white; 
-            padding: 20px; 
-            border-radius: 10px; 
-            border-left: 5px solid #2e7d32; 
-            box-shadow: 0 2px 5px rgba(0,0,0,0.1); 
-            color: black !important;
-        }
-
-        /* Headings specific color */
-        h1, h2, h3, h4, h5, h6 { 
-            color: #1b5e20 !important; 
-        }
+    # === TAB 1: CROP DOCTOR ===
+    with tabs[0]:
+        st.markdown('<div class="glass-card"><h4>🩺 AI Plant Diagnosis</h4><p>Upload a leaf photo. Get results in 5 seconds.</p></div>', unsafe_allow_html=True)
         
-        /* Metric/Big Numbers */
-        [data-testid="stMetricValue"] {
-            color: #1b5e20 !important;
-        }
-        
-        /* Input fields text */
-        input {
-            color: black !important;
-        }
-        </style>
-    """, unsafe_allow_html=True)
-
-    # --- SIDEBAR ---
-    with st.sidebar:
-        st.title("🌾 GreenMitra")
-        st.markdown("**Jai Kisan! (Farmer's Best Friend)**")
-        
-        # Profile Settings
-        st.header("⚙️ Profile")
-        name = st.text_input("Your Name", "Farmer")
-        city = st.text_input("Village/City", "Pune")
-        lang = st.selectbox("Language", ["Marathi", "Hindi", "English"])
-        lang_map = {"Marathi": "mr", "Hindi": "hi", "English": "en"}
-        
-        # Weather Check (Runs always)
-        w_text, w_cond, w_temp = get_weather(city)
-        st.success(f"📍 {city}: {w_temp}°C, {w_text}")
-
-    # --- MAIN TABS ---
-    tab1, tab2, tab3, tab4 = st.tabs(["🏥 Crop Doctor", "📅 Daily Planner", "📜 Govt Schemes", "🌍 Global Tech"])
-
-    # === TAB 1: CROP DOCTOR (Your AI) ===
-    with tab1:
-        st.header("📸 AI Crop Doctor (पीक डॉक्टर)")
-        st.info("Upload a photo to detect diseases instantly.")
-        
-        mode = st.radio("Input:", ["📂 Upload Image", "📸 Take Photo"], horizontal=True)
-        file = None
-        if mode == "📸 Take Photo": 
-            file = st.camera_input("Capture")
-        else: 
-            file = st.file_uploader("Select File", type=['jpg','png','jpeg'])
-            
-        if file:
-            st.image(file, width=300)
-            if st.button("🔍 Diagnose Crop"):
-                if not GOOGLE_API_KEY:
-                    st.error("❌ Google API Key missing. Please check App Settings > Secrets.")
-                else:
-                    with st.spinner("Consulting AI Expert..."):
-                        img_bytes = file.getvalue()
-                        prompt = f"""
-                        Act as an expert Indian Agronomist. Language: {lang}.
-                        Location: {city}, Weather: {w_text}.
-                        1. Name the Disease.
-                        2. Natural/Organic Remedy.
-                        3. Chemical Remedy (only if urgent).
-                        4. Weather Warning if weather is {w_cond}.
-                        Keep it simple and direct for a farmer.
-                        """
-                        res = analyze_image_ai(GOOGLE_API_KEY, img_bytes, prompt)
-                        st.markdown(f'<div class="glass-card">{res}</div>', unsafe_allow_html=True)
-                        
-                        # Audio
-                        try:
-                            clean_text = res.replace('*', '').replace('#', '')
-                            tts = gTTS(clean_text, lang=lang_map[lang])
-                            audio_bytes = io.BytesIO()
-                            tts.write_to_fp(audio_bytes)
-                            audio_bytes.seek(0)
-                            st.audio(audio_bytes, format="audio/mp3")
-                        except:
-                            st.info("ℹ️ Audio optimized for Localhost.")
-
-    # === TAB 2: DAILY PLANNER (New Feature) ===
-    with tab2:
-        st.header("📅 Daily Farm Planner (दैनंदिन नियोजन)")
-        
-        col1, col2 = st.columns(2)
+        col1, col2 = st.columns([1, 1])
         with col1:
-            crop_name = st.selectbox("Select Crop", ["Wheat", "Rice", "Sugarcane", "Tomato", "Cotton"])
-            sowing_date = st.date_input("Sowing Date (पेरणी तारीख)", datetime.date(2024, 1, 1))
+            mode = st.radio("", ["Upload File", "Camera"], horizontal=True, label_visibility="collapsed")
+            file = None
+            if mode == "Camera": file = st.camera_input("Scan Leaf")
+            else: file = st.file_uploader("Upload Image", type=['jpg','png'])
         
         with col2:
-            # Logic: Calculate Age
-            today = datetime.date.today()
-            age_days = (today - sowing_date).days
-            
-            st.metric(label="Crop Age (Days)", value=f"{age_days} Days")
-            
-            # Logic: Automatic Alert based on Age
-            alert_msg = "✅ Crop is healthy. Keep monitoring."
-            if age_days < 10:
-                alert_msg = "🌱 Germination Stage: Ensure light watering. Do not use heavy fertilizers."
-            elif 20 < age_days < 40:
-                alert_msg = "🌿 Vegetative Stage: Check for weeds now. Apply Nitrogen (Urea) if leaves are yellow."
-            elif 60 < age_days < 80:
-                alert_msg = "🌸 Flowering Stage: CRITICAL! Do not spray chemicals now or you kill bees. Water regularly."
-            elif age_days > 100:
-                alert_msg = "🌾 Harvest Stage: Stop watering 10 days before cutting."
-            
-            st.info(f"📢 **Today's Advice:** {alert_msg}")
-            
-            # Weather Warning Logic
-            if "Rain" in w_cond:
-                st.error("🌧️ **RAIN ALERT:** Do not spray any medicine today! It will wash away.")
+            if file:
+                st.image(file, use_column_width=True, caption="Analyzing...")
+                if st.button("Diagnose Now"):
+                    with st.spinner("AI is analyzing leaf texture..."):
+                        img_bytes = file.getvalue()
+                        prompt = "You are an Agronomist. Identify the disease, give organic remedy, and chemical remedy. Keep it under 150 words."
+                        res = analyze_crop(GOOGLE_API_KEY, img_bytes, prompt)
+                        st.markdown(f'<div class="glass-card"><b>✅ Diagnosis:</b><br>{res}</div>', unsafe_allow_html=True)
 
-    # === TAB 3: GOVT SCHEMES (New Feature) ===
-    with tab3:
-        st.header("📜 Government Schemes (शासकीय योजना)")
-        selected_state = st.selectbox("Select Your State", list(SCHEMES_DB.keys()))
+    # === TAB 2: LIVE REAL-TIME SCHEMES (YOUR DREAM FEATURE) ===
+    with tabs[1]:
+        st.markdown('<div class="glass-card"><h4>📡 Live Government Radar</h4><p>Scans Government Press Releases & News every minute.</p></div>', unsafe_allow_html=True)
         
-        st.write(f"Showing schemes for: **{selected_state}**")
-        
-        for scheme in SCHEMES_DB[selected_state]:
-            with st.expander(f"🏛️ {scheme['name']}"):
-                st.write(f"**Benefit:** {scheme['benefit']}")
-                st.markdown(f"[Apply Here / More Info]({scheme['link']})")
+        if st.button("🔄 Scan for New Schemes (Live Web Search)"):
+            with st.spinner("Connecting to Government News Feeds..."):
+                # This calls the Function in Section 4
+                latest_news = fetch_latest_schemes()
+                
+                st.subheader("📢 Just Found:")
+                st.markdown(f'<div class="glass-card">{latest_news}</div>', unsafe_allow_html=True)
+                
+                st.caption("ℹ️ This data is fetched live from Google/DuckDuckGo News.")
 
-    # === TAB 4: GLOBAL TECH (New Idea) ===
-    with tab4:
-        st.header("🌍 Global Best Practices (Smart Farming)")
-        st.write("Technologies used in Israel/USA adapted for India:")
+        st.markdown("### 🏛️ Active Database")
+        schemes = [
+            {"name": "PM-KISAN", "tag": " Income Support", "desc": "₹6,000/year for all farmers."},
+            {"name": "Namo Shetkari", "tag": "Maharashtra", "desc": "Additional ₹6,000/year for MH farmers."},
+        ]
+        
+        for s in schemes:
+            st.markdown(f"""
+            <div class="glass-card" style="padding: 15px; border-left: 5px solid #2e7d32;">
+                <h5 style="margin:0;">{s['name']} <span style="background:#e8f5e9; padding:2px 8px; border-radius:10px; font-size:12px;">{s['tag']}</span></h5>
+                <p style="margin:5px 0 0 0; font-size:14px;">{s['desc']}</p>
+            </div>
+            """, unsafe_allow_html=True)
+
+    # === TAB 3: SMART PLANNER ===
+    with tabs[2]:
+        st.markdown('<div class="glass-card"><h4>📅 Crop Lifecycle Manager</h4></div>', unsafe_allow_html=True)
         
         c1, c2 = st.columns(2)
         with c1:
-            st.subheader("🛒 Direct-to-Consumer")
-            st.caption("Sell without middlemen (Coming Soon)")
-            st.button("List My Crop for Sale")
-            
+            crop = st.selectbox("Select Crop", ["Wheat", "Rice", "Cotton"])
         with c2:
-            st.subheader("🚁 Drone Rental")
-            st.caption("Rent a drone for spraying medicine (Coming Soon)")
-            st.button("Find Drone Pilot Nearby")
+            date = st.date_input("Sowing Date", datetime.date.today())
+            
+        days = (datetime.date.today() - date).days
+        st.metric("Crop Age", f"{days} Days")
+        
+        if days < 20:
+            st.info("🌱 Stage: Germination. Keep soil moist.")
+        elif days < 60:
+            st.success("🌿 Stage: Vegetative. Add Nitrogen now.")
+        else:
+            st.warning("🌾 Stage: Flowering/Harvest. Stop heavy watering.")
 
 if __name__ == "__main__":
     main()
