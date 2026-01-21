@@ -12,7 +12,7 @@ st.set_page_config(
     page_title="GreenMitra AI",
     page_icon="🌿",
     layout="wide",
-    initial_sidebar_state="collapsed" # Modern look hides sidebar by default
+    initial_sidebar_state="collapsed"
 )
 
 # --- 2. KEYS ---
@@ -20,15 +20,15 @@ if "GOOGLE_API_KEY" in st.secrets:
     GOOGLE_API_KEY = st.secrets["GOOGLE_API_KEY"]
     genai.configure(api_key=GOOGLE_API_KEY)
 else:
-    st.error("Setup your Google API Key in Secrets")
-    st.stop()
+    # Safe fallback if keys aren't set yet (prevents crash)
+    GOOGLE_API_KEY = ""
 
 if "WEATHER_API_KEY" in st.secrets:
     WEATHER_API_KEY = st.secrets["WEATHER_API_KEY"]
 else:
     WEATHER_API_KEY = ""
 
-# --- 3. MODERN UI CSS (THE MAKEOVER) ---
+# --- 3. MODERN UI CSS (THE VISIBILITY FIX) ---
 st.markdown("""
     <style>
     /* 1. Import Modern Font */
@@ -36,7 +36,6 @@ st.markdown("""
     
     html, body, [class*="css"] {
         font-family: 'Inter', sans-serif;
-        color: #1a1a1a;
     }
 
     /* 2. Background - Clean Gradient */
@@ -44,32 +43,43 @@ st.markdown("""
         background: linear-gradient(135deg, #e0f7fa 0%, #e8f5e9 100%);
     }
 
-    /* 3. Hide Default Streamlit Elements for a "Web App" feel */
+    /* 3. FORCE BLACK TEXT (The Fix) */
+    /* This overrides Dark Mode white text settings */
+    h1, h2, h3, h4, h5, h6, p, div, span, label, li, .stMarkdown, .stText {
+        color: #000000 !important;
+    }
+    
+    /* Fix Input Fields visibility */
+    .stTextInput > div > div > input {
+        color: black !important;
+        background-color: white !important;
+    }
+    .stSelectbox > div > div > div {
+        color: black !important;
+    }
+
+    /* 4. Hide Default Streamlit Elements */
     #MainMenu {visibility: hidden;}
     footer {visibility: hidden;}
     header {visibility: hidden;}
 
-    /* 4. Glassmorphism Cards */
+    /* 5. Glassmorphism Cards */
     .glass-card {
-        background: rgba(255, 255, 255, 0.75);
+        background: rgba(255, 255, 255, 0.65);
         backdrop-filter: blur(12px);
         -webkit-backdrop-filter: blur(12px);
         border-radius: 20px;
-        border: 1px solid rgba(255, 255, 255, 0.3);
+        border: 1px solid rgba(255, 255, 255, 0.5);
         box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.07);
         padding: 25px;
         margin-bottom: 20px;
-        transition: transform 0.2s;
-    }
-    .glass-card:hover {
-        transform: translateY(-5px);
-        box-shadow: 0 12px 40px 0 rgba(31, 38, 135, 0.15);
+        color: black !important; /* Force text black inside cards */
     }
 
-    /* 5. Modern Buttons */
+    /* 6. Modern Buttons */
     .stButton>button {
         background: linear-gradient(90deg, #2e7d32 0%, #43a047 100%);
-        color: white;
+        color: white !important; /* Keep buttons white text */
         border: none;
         border-radius: 12px;
         padding: 12px 24px;
@@ -82,15 +92,6 @@ st.markdown("""
         transform: scale(1.02);
         box-shadow: 0 6px 20px rgba(46, 125, 50, 0.4);
     }
-
-    /* 6. Typography Headers */
-    h1 {
-        background: -webkit-linear-gradient(45deg, #1b5e20, #2e7d32);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-        font-weight: 800 !important;
-        letter-spacing: -1px;
-    }
     
     /* 7. Metric Styling */
     div[data-testid="stMetric"] {
@@ -99,6 +100,8 @@ st.markdown("""
         border-radius: 15px;
         box-shadow: 0 4px 10px rgba(0,0,0,0.05);
     }
+    [data-testid="stMetricLabel"] { color: #444 !important; }
+    [data-testid="stMetricValue"] { color: #1b5e20 !important; }
     </style>
 """, unsafe_allow_html=True)
 
@@ -108,13 +111,14 @@ def fetch_latest_schemes():
     Searches the web for schemes released in the last 24 hours.
     """
     try:
-        # 1. Search Logic: Looks for "Indian Agriculture Schemes" in News
-        results = DDGS().text("India government agriculture scheme announcement today", max_results=5)
-        
-        # 2. Convert search results to text for AI
+        results = DDGS().text("India government agriculture scheme announcement today news", max_results=5)
+        if not results:
+            return "No immediate news found. Check official portals."
+            
+        # Convert search results to text for AI
         news_text = "\n".join([f"- {r['title']}: {r['body']} (Link: {r['href']})" for r in results])
         
-        # 3. Ask Gemini to filter the noise
+        # Ask Gemini to filter the noise
         model = genai.GenerativeModel('gemini-1.5-flash')
         prompt = f"""
         You are a Government News Analyst.
@@ -122,8 +126,7 @@ def fetch_latest_schemes():
         {news_text}
         
         Task: Identify any REAL, RECENT Government schemes or farming updates launched recently.
-        If found, format as a Python list of dictionaries: {{'name': '...', 'benefit': '...', 'link': '...'}}.
-        If nothing new is found, return "No new schemes declared today."
+        Summary should be concise (bullet points). Include links if available.
         """
         response = model.generate_content(prompt)
         return response.text
@@ -132,7 +135,7 @@ def fetch_latest_schemes():
 
 # --- 5. CORE FUNCTIONS ---
 def get_weather(city):
-    if not WEATHER_API_KEY: return "Unavailable", "Clear", 25
+    if not WEATHER_API_KEY: return "Unavailable", 25
     try:
         url = f"http://api.openweathermap.org/data/2.5/weather?q={city}&appid={WEATHER_API_KEY}&units=metric"
         response = requests.get(url)
@@ -144,13 +147,14 @@ def get_weather(city):
     return "Clear", 25
 
 def analyze_crop(api_key, image_bytes, prompt):
+    if not api_key: return "API Key Missing. Check Secrets."
     model = genai.GenerativeModel('gemini-1.5-flash')
     try:
         image_parts = [{"mime_type": "image/jpeg", "data": image_bytes}]
         response = model.generate_content([prompt, image_parts[0]])
         return response.text
-    except:
-        return "Error connecting to AI."
+    except Exception as e:
+        return f"Error: {e}"
 
 # --- 6. MAIN APP LAYOUT ---
 def main():
@@ -170,7 +174,7 @@ def main():
         
         col1, col2 = st.columns([1, 1])
         with col1:
-            mode = st.radio("", ["Upload File", "Camera"], horizontal=True, label_visibility="collapsed")
+            mode = st.radio("Select Input", ["Upload File", "Camera"], horizontal=True)
             file = None
             if mode == "Camera": file = st.camera_input("Scan Leaf")
             else: file = st.file_uploader("Upload Image", type=['jpg','png'])
@@ -185,30 +189,28 @@ def main():
                         res = analyze_crop(GOOGLE_API_KEY, img_bytes, prompt)
                         st.markdown(f'<div class="glass-card"><b>✅ Diagnosis:</b><br>{res}</div>', unsafe_allow_html=True)
 
-    # === TAB 2: LIVE REAL-TIME SCHEMES (YOUR DREAM FEATURE) ===
+    # === TAB 2: LIVE REAL-TIME SCHEMES ===
     with tabs[1]:
         st.markdown('<div class="glass-card"><h4>📡 Live Government Radar</h4><p>Scans Government Press Releases & News every minute.</p></div>', unsafe_allow_html=True)
         
         if st.button("🔄 Scan for New Schemes (Live Web Search)"):
             with st.spinner("Connecting to Government News Feeds..."):
-                # This calls the Function in Section 4
                 latest_news = fetch_latest_schemes()
                 
                 st.subheader("📢 Just Found:")
                 st.markdown(f'<div class="glass-card">{latest_news}</div>', unsafe_allow_html=True)
-                
                 st.caption("ℹ️ This data is fetched live from Google/DuckDuckGo News.")
 
-        st.markdown("### 🏛️ Active Database")
+        st.markdown("### 🏛️ Active Database (Examples)")
         schemes = [
-            {"name": "PM-KISAN", "tag": " Income Support", "desc": "₹6,000/year for all farmers."},
+            {"name": "PM-KISAN", "tag": "Income Support", "desc": "₹6,000/year for all farmers."},
             {"name": "Namo Shetkari", "tag": "Maharashtra", "desc": "Additional ₹6,000/year for MH farmers."},
         ]
         
         for s in schemes:
             st.markdown(f"""
             <div class="glass-card" style="padding: 15px; border-left: 5px solid #2e7d32;">
-                <h5 style="margin:0;">{s['name']} <span style="background:#e8f5e9; padding:2px 8px; border-radius:10px; font-size:12px;">{s['tag']}</span></h5>
+                <h5 style="margin:0;">{s['name']} <span style="background:#e8f5e9; padding:2px 8px; border-radius:10px; font-size:12px; border: 1px solid #2e7d32;">{s['tag']}</span></h5>
                 <p style="margin:5px 0 0 0; font-size:14px;">{s['desc']}</p>
             </div>
             """, unsafe_allow_html=True)
