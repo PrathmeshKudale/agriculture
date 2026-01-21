@@ -56,7 +56,30 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# --- 4. CORE FUNCTIONS ---
+# --- 4. SMART AI ENGINE (THE FIX) ---
+def get_ai_response(prompt, image=None):
+    """
+    Tries 'gemini-1.5-flash' first. 
+    If it fails (404 Error), it automatically switches to 'gemini-pro'.
+    """
+    models_to_try = ['gemini-1.5-flash', 'gemini-pro']
+    
+    for model_name in models_to_try:
+        try:
+            model = genai.GenerativeModel(model_name)
+            if image:
+                response = model.generate_content([prompt, image])
+            else:
+                response = model.generate_content(prompt)
+            return response.text
+        except Exception as e:
+            # If it's the last model and still fails, return the error
+            if model_name == models_to_try[-1]:
+                return f"⚠️ System Error: {str(e)}"
+            # Otherwise, continue to the next model (Silent Switch)
+            continue
+
+# --- 5. CORE FUNCTIONS ---
 def fetch_latest_schemes():
     try:
         feed_url = "https://news.google.com/rss/search?q=India+Agriculture+Schemes+Government+announce+launch+when:30d&hl=en-IN&gl=IN&ceid=IN:en"
@@ -72,14 +95,13 @@ def fetch_latest_schemes():
 
 def analyze_crop(api_key, image_bytes, prompt):
     if not api_key: return "API Key Missing."
-    model = genai.GenerativeModel('gemini-1.5-flash')
     try:
-        image_parts = [{"mime_type": "image/jpeg", "data": image_bytes}]
-        response = model.generate_content([prompt, image_parts[0]])
-        return response.text
+        image_parts = {"mime_type": "image/jpeg", "data": image_bytes}
+        # Use the Smart Switcher here
+        return get_ai_response(prompt, image_parts)
     except Exception as e: return f"Error: {e}"
 
-# --- 5. CHATBOT LOGIC (DEBUG MODE) ---
+# --- 6. CHATBOT LOGIC ---
 def farmer_chatbot():
     if "messages" not in st.session_state:
         st.session_state.messages = [
@@ -97,26 +119,16 @@ def farmer_chatbot():
 
         with st.chat_message("assistant"):
             with st.spinner("Thinking..."):
-                try:
-                    # System Prompt
-                    system_prompt = f"Act as an Indian Agriculture Expert. User Question: {prompt}"
-                    
-                    # Direct Call
-                    model = genai.GenerativeModel('gemini-1.5-flash')
-                    response = model.generate_content(system_prompt)
-                    ai_reply = response.text
-                    
-                    st.markdown(ai_reply)
-                    st.session_state.messages.append({"role": "assistant", "content": ai_reply})
-                    
-                except Exception as e:
-                    # --- SHOWS REAL ERROR NOW ---
-                    error_msg = f"⚠️ System Error: {str(e)}"
-                    st.error(error_msg)
-                    if "400" in str(e) or "API key" in str(e):
-                        st.warning("💡 Tip: Your Google API Key has expired. Please update it in Secrets.")
+                # System Prompt
+                system_prompt = f"Act as an Indian Agriculture Expert. Keep answers short and simple. User Question: {prompt}"
+                
+                # Use the Smart Switcher here
+                ai_reply = get_ai_response(system_prompt)
+                
+                st.markdown(ai_reply)
+                st.session_state.messages.append({"role": "assistant", "content": ai_reply})
 
-# --- 6. MAIN APP LAYOUT ---
+# --- 7. MAIN APP LAYOUT ---
 def main():
     c1, c2 = st.columns([1, 4])
     with c1: st.write("## 🌿 AI")
@@ -177,3 +189,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+    
