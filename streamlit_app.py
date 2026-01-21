@@ -15,13 +15,13 @@ st.set_page_config(
 
 # --- 2. SECURE KEYS ---
 if "GOOGLE_API_KEY" in st.secrets:
-    GOOGLE_API_KEY = st.secrets["AIzaSyDDrPEroe5lAKm6YfBU4YPC00CFs9-qsxY"]
+    GOOGLE_API_KEY = st.secrets["GOOGLE_API_KEY"]
 else:
     st.error("🚨 Critical Error: Google API Key is missing!")
     st.stop()
 
 if "WEATHER_API_KEY" in st.secrets:
-    WEATHER_API_KEY = st.secrets["4a3fc3c484c492d967514dc42f86cb40"]
+    WEATHER_API_KEY = st.secrets["WEATHER_API_KEY"]
 else:
     WEATHER_API_KEY = ""
 
