@@ -106,32 +106,45 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # --- 4. REAL-TIME NEWS AGENT LOGIC ---
+# --- REPLACEMENT FUNCTION: SCAN PAST 1 YEAR ---
+
 def fetch_latest_schemes():
     """
-    Searches the web for schemes released in the last 24 hours.
+    Searches for Government Agricultural Schemes from the PAST 1 YEAR.
     """
     try:
-        results = DDGS().text("India government agriculture scheme announcement today news", max_results=5)
-        if not results:
-            return "No immediate news found. Check official portals."
-            
-        # Convert search results to text for AI
-        news_text = "\n".join([f"- {r['title']}: {r['body']} (Link: {r['href']})" for r in results])
+        # 1. Search for news from the past year ('y')
+        results = DDGS().text("India government agriculture scheme launch announcement news", timelimit='y', max_results=10)
         
-        # Ask Gemini to filter the noise
+        if not results:
+            return "No news found in the last year."
+            
+        # 2. Format results
+        news_text = "\n".join([f"- {r['title']} ({r['ago'] if 'ago' in r else 'Recent'}): {r['body']} (Link: {r['href']})" for r in results])
+        
+        # 3. AI Filter: Adjusted for "Past Year"
         model = genai.GenerativeModel('gemini-1.5-flash')
+        
+        current_date = datetime.date.today().strftime("%B %Y")
+        
         prompt = f"""
-        You are a Government News Analyst.
-        Here are the latest search results about Indian Agriculture:
+        You are a Government Policy Analyst. Today's date is {current_date}.
+        
+        Here are search results for Indian Agriculture Schemes from the past year:
         {news_text}
         
-        Task: Identify any REAL, RECENT Government schemes or farming updates launched recently.
-        Summary should be concise (bullet points). Include links if available.
+        **TASK:**
+        1. Identify Government schemes or major farming updates launched or active in the **PAST 1 YEAR**.
+        2. Summarize the key benefits for farmers.
+        3. Include the launch month/date if mentioned.
+        
+        Format as a clean list with Links.
         """
+        
         response = model.generate_content(prompt)
         return response.text
     except Exception as e:
-        return f"Could not connect to live news: {e}"
+        return f"Could not connect to news feed: {e}"
 
 # --- 5. CORE FUNCTIONS ---
 def get_weather(city):
