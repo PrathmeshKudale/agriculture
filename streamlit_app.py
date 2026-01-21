@@ -56,28 +56,51 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# --- 4. SMART AI ENGINE (THE FIX) ---
+# --- 4. SMART MODEL DISCOVERY (THE FIX) ---
+def get_working_model():
+    """
+    Asks Google for a list of available models and picks the best one.
+    This fixes the '404 Model Not Found' error permanently.
+    """
+    try:
+        # Get list of ALL models available to this API Key
+        available_models = []
+        for m in genai.list_models():
+            if 'generateContent' in m.supported_generation_methods:
+                available_models.append(m.name)
+        
+        # 1. Try to find a 'flash' model (Fastest)
+        for model in available_models:
+            if 'flash' in model: return model
+            
+        # 2. If no flash, try 'pro' (Smartest)
+        for model in available_models:
+            if 'pro' in model: return model
+            
+        # 3. If neither, just take the first one available
+        if available_models:
+            return available_models[0]
+            
+    except Exception:
+        pass
+        
+    # Ultimate Fallback (Standard Name)
+    return "models/gemini-1.5-flash"
+
 def get_ai_response(prompt, image=None):
     """
-    Tries 'gemini-1.5-flash' first. 
-    If it fails (404 Error), it automatically switches to 'gemini-pro'.
+    Uses the auto-discovered model to generate content.
     """
-    models_to_try = ['gemini-1.5-flash', 'gemini-pro']
-    
-    for model_name in models_to_try:
-        try:
-            model = genai.GenerativeModel(model_name)
-            if image:
-                response = model.generate_content([prompt, image])
-            else:
-                response = model.generate_content(prompt)
-            return response.text
-        except Exception as e:
-            # If it's the last model and still fails, return the error
-            if model_name == models_to_try[-1]:
-                return f"⚠️ System Error: {str(e)}"
-            # Otherwise, continue to the next model (Silent Switch)
-            continue
+    model_name = get_working_model()
+    try:
+        model = genai.GenerativeModel(model_name)
+        if image:
+            response = model.generate_content([prompt, image])
+        else:
+            response = model.generate_content(prompt)
+        return response.text
+    except Exception as e:
+        return f"⚠️ System Error ({model_name}): {str(e)}"
 
 # --- 5. CORE FUNCTIONS ---
 def fetch_latest_schemes():
@@ -97,7 +120,6 @@ def analyze_crop(api_key, image_bytes, prompt):
     if not api_key: return "API Key Missing."
     try:
         image_parts = {"mime_type": "image/jpeg", "data": image_bytes}
-        # Use the Smart Switcher here
         return get_ai_response(prompt, image_parts)
     except Exception as e: return f"Error: {e}"
 
@@ -119,12 +141,8 @@ def farmer_chatbot():
 
         with st.chat_message("assistant"):
             with st.spinner("Thinking..."):
-                # System Prompt
                 system_prompt = f"Act as an Indian Agriculture Expert. Keep answers short and simple. User Question: {prompt}"
-                
-                # Use the Smart Switcher here
                 ai_reply = get_ai_response(system_prompt)
-                
                 st.markdown(ai_reply)
                 st.session_state.messages.append({"role": "assistant", "content": ai_reply})
 
