@@ -66,28 +66,49 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # --- 4. GOOGLE NEWS RADAR (THE FIX) ---
+# --- REPLACEMENT FUNCTION: CLEANER NEWS FEED ---
+
 def fetch_latest_schemes():
     """
-    Fetches LIVE news from Google News RSS for 'India Agriculture Schemes'.
-    Filters: Last 30 Days (when:30d), India Edition.
+    Fetches LIVE news from Google News RSS.
+    Includes a 'Beautiful Fallback' so it looks good even if AI fails.
     """
     news_items = []
     
     try:
-        # Magic URL: Search for "Agriculture Scheme India" in last 30 days
-        # This is robust and rarely blocked.
+        # Robust Google News URL
         feed_url = "https://news.google.com/rss/search?q=India+Agriculture+Schemes+Government+announce+launch+when:30d&hl=en-IN&gl=IN&ceid=IN:en"
-        
         feed = feedparser.parse(feed_url)
         
         if feed.entries:
-            for entry in feed.entries[:6]: # Get top 6 results
-                # We clean the title to remove the publisher name (e.g., "- Times of India")
+            for entry in feed.entries[:5]: # Top 5 only
                 clean_title = entry.title.split(" - ")[0]
-                news_items.append(f"- {clean_title} (Source: {entry.source.title}) [Link]({entry.link})")
+                # Format as a clean Markdown list item
+                news_items.append(f"🔹 **{clean_title}**\n*Source: {entry.source.title}* | [Read More]({entry.link})")
     except Exception as e:
-        return f"Connection Error: {e}"
+        return f"⚠️ Connection Error: {e}"
 
+    # Attempt AI Summarization
+    try:
+        if news_items:
+            news_text = "\n".join([item.split("|")[0] for item in news_items]) # Send only text to AI, not links
+            model = genai.GenerativeModel('gemini-1.5-flash')
+            prompt = f"""
+            You are a Farmer's News Anchor.
+            Summarize these headlines into 3 short, exciting bullet points with emojis.
+            Headlines: {news_text}
+            """
+            response = model.generate_content(prompt)
+            return response.text
+    except:
+        pass # If AI fails, just use the beautiful raw list below
+
+    # --- THE FIX: BEAUTIFUL FALLBACK ---
+    # If AI fails (or key expires), show this clean list instead of a messy block.
+    if news_items:
+        return "### 📢 Latest News (Live Feed)\n\n" + "\n\n".join(news_items)
+    
+    return "No recent updates found."
     # If we found news, let AI summarize it
     if news_items:
         try:
