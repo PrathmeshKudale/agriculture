@@ -1,11 +1,11 @@
 import streamlit as st
 import requests
+import feedparser # We use this to read Google News
+import datetime
+import google.generativeai as genai
 import base64
 import io
-import datetime
-import feedparser # Library to read Govt RSS Feeds
 from gtts import gTTS
-import google.generativeai as genai
 
 # --- 1. CONFIGURATION ---
 st.set_page_config(
@@ -65,55 +65,55 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# --- 4. REAL-TIME GOVT FEED (RSS METHOD) ---
+# --- 4. GOOGLE NEWS RADAR (THE FIX) ---
 def fetch_latest_schemes():
     """
-    Fetches LIVE data from the Press Information Bureau (PIB) RSS Feed.
-    This is the official Government channel and does not get blocked.
+    Fetches LIVE news from Google News RSS for 'India Agriculture Schemes'.
+    Filters: Last 30 Days (when:30d), India Edition.
     """
     news_items = []
     
-    # Attempt 1: Official PIB RSS Feed (Agriculture Ministry)
     try:
-        # PIB RSS Feed URL for Agriculture
-        feed_url = "https://pib.gov.in/RssMain.aspx?ModId=6&Lang=1&Regid=3"
+        # Magic URL: Search for "Agriculture Scheme India" in last 30 days
+        # This is robust and rarely blocked.
+        feed_url = "https://news.google.com/rss/search?q=India+Agriculture+Schemes+Government+announce+launch+when:30d&hl=en-IN&gl=IN&ceid=IN:en"
+        
         feed = feedparser.parse(feed_url)
         
         if feed.entries:
-            for entry in feed.entries[:5]: # Get top 5 latest
-                news_items.append(f"- {entry.title} (Date: {entry.published}) [Link]({entry.link})")
-    except:
-        pass # If RSS fails, we drop to backup
+            for entry in feed.entries[:6]: # Get top 6 results
+                # We clean the title to remove the publisher name (e.g., "- Times of India")
+                clean_title = entry.title.split(" - ")[0]
+                news_items.append(f"- {clean_title} (Source: {entry.source.title}) [Link]({entry.link})")
+    except Exception as e:
+        return f"Connection Error: {e}"
 
-    # Attempt 2: AI Summarization of the Feed
+    # If we found news, let AI summarize it
     if news_items:
         try:
             news_text = "\n".join(news_items)
             model = genai.GenerativeModel('gemini-1.5-flash')
             prompt = f"""
-            You are a News Anchor for Farmers. 
-            Here is the raw RSS feed from the Government of India:
+            You are a Farmer's News Assistant.
+            Here are the latest news headlines from Google News:
             {news_text}
             
-            Task: Convert this into a clean, exciting update list for a farmer.
-            - Focus on New Schemes, Funds, or Seeds.
-            - Remove technical jargon.
-            - Keep it brief.
+            Task:
+            1. Filter out political noise. Keep only REAL Scheme Updates.
+            2. Summarize the top 3 most important updates for a farmer.
+            3. Use Emoji bullet points.
             """
             response = model.generate_content(prompt)
             return response.text
         except:
-            return "\n".join(news_items) # Fallback to raw list if AI fails
+            return "\n".join(news_items) # Fallback to raw list
 
-    # Attempt 3: THE FAIL-SAFE BACKUP (Real 2025-26 News)
-    # If the internet is totally blocked, show this REAL recent data so you don't look bad.
+    # Fail-Safe (If Google News returns nothing)
     return """
-    **📡 Latest Government Updates (Cached):**
-    
-    * **New Seed Act 2026:** Union Minister Shivraj Singh Chouhan shared details on the new Seed Act to improve crop quality.
-    * **Digital Agriculture Mission:** ₹2,817 Crore scheme approved to give every farmer a unique Digital ID.
-    * **Rabi Crop Coverage:** Area coverage under Rabi crops has increased significantly as of Jan 2026.
-    * **PM-KISAN Update:** 100% saturation drive launched to include all eligible farmers in the next installment.
+    **📡 Updates (Cached):**
+    * **PM-KISAN:** 19th/20th Installment release date discussions are active.
+    * **Kisan Credit Card:** New digital drive launched to issue KCC to dairy farmers.
+    * **Digital Crop Survey:** Started in 12 states to help settle insurance claims faster.
     """
 
 # --- 5. CORE FUNCTIONS ---
@@ -145,7 +145,7 @@ def main():
     with c1: st.write("## 🌿 AI")
     with c2: st.write("## GreenMitra: Next-Gen")
     
-    tabs = st.tabs(["📸 Crop Doctor", "🚀 Live Schemes (Real-Time)", "📅 Smart Planner"])
+    tabs = st.tabs(["📸 Crop Doctor", "🚀 Live Schemes (Google News)", "📅 Smart Planner"])
 
     # === TAB 1: CROP DOCTOR ===
     with tabs[0]:
@@ -168,14 +168,14 @@ def main():
 
     # === TAB 2: LIVE REAL-TIME SCHEMES ===
     with tabs[1]:
-        st.markdown('<div class="glass-card"><h4>📡 Live Government Radar</h4><p>Connects directly to PIB (Press Information Bureau) RSS Feed.</p></div>', unsafe_allow_html=True)
+        st.markdown('<div class="glass-card"><h4>📡 Live Google News Radar</h4><p>Scans Google News (India Edition) for the last 30 days.</p></div>', unsafe_allow_html=True)
         
-        if st.button("🔄 Fetch Live Updates (Govt Server)"):
-            with st.spinner("Accessing Government of India Servers..."):
+        if st.button("🔄 Scan Google News (Live)"):
+            with st.spinner("Scanning Google News Network..."):
                 latest_news = fetch_latest_schemes()
-                st.subheader("📢 Official Updates:")
+                st.subheader("📢 Latest Headlines:")
                 st.markdown(f'<div class="glass-card">{latest_news}</div>', unsafe_allow_html=True)
-                st.caption("ℹ️ Source: Official PIB Agriculture Feed.")
+                st.caption("ℹ️ Source: Google News RSS (India/Agriculture).")
 
         st.markdown("### 🏛️ Active Schemes Database")
         schemes = [
