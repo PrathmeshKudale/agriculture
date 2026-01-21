@@ -199,15 +199,60 @@ def main():
                 st.caption("ℹ️ Source: Google News RSS (India/Agriculture).")
 
         st.markdown("### 🏛️ Active Schemes Database")
+       # --- REPLACING THE OLD SCHEMES LIST WITH THIS BIG DATABASE ---
+        st.markdown("### 🏛️ Active Schemes Database (All India)")
+        
         schemes = [
-            {"name": "PM-KISAN", "tag": "Income Support", "desc": "₹6,000/year for all farmers."},
-            {"name": "Namo Shetkari", "tag": "Maharashtra", "desc": "Additional ₹6,000/year for MH farmers."},
+            {
+                "name": "PM-KISAN Samman Nidhi", 
+                "tag": "Central Govt", 
+                "desc": "₹6,000 per year income support for all landholding farmers (paid in 3 installments)."
+            },
+            {
+                "name": "Pradhan Mantri Fasal Bima Yojana (PMFBY)", 
+                "tag": "Insurance", 
+                "desc": "Crop insurance scheme with lowest premium (2% for Kharif, 1.5% for Rabi) against natural calamities."
+            },
+            {
+                "name": "Kisan Credit Card (KCC)", 
+                "tag": "Loan / Credit", 
+                "desc": "Short-term credit for crops at low interest rates (4% if repaid timely)."
+            },
+            {
+                "name": "Namo Shetkari MahaSanman Nidhi", 
+                "tag": "Maharashtra", 
+                "desc": "Additional ₹6,000 per year specifically for farmers in Maharashtra (Total ₹12k with PM-KISAN)."
+            },
+            {
+                "name": "Pradhan Mantri Krishi Sinchai Yojana (PMKSY)", 
+                "tag": "Irrigation", 
+                "desc": "Subsidies for drip/sprinkler irrigation systems. Motto: 'Har Khet Ko Pani'."
+            },
+            {
+                "name": "Soil Health Card Scheme", 
+                "tag": "Soil Health", 
+                "desc": "Free soil testing and report card to help farmers choose the right fertilizers."
+            },
+            {
+                "name": "e-NAM (National Agriculture Market)", 
+                "tag": "Market / Mandi", 
+                "desc": "Online trading platform to sell crops to buyers across India for better prices."
+            },
+            {
+                "name": "Paramparagat Krishi Vikas Yojana (PKVY)", 
+                "tag": "Organic Farming", 
+                "desc": "Financial assistance of ₹50,000 per hectare for adopting organic farming."
+            }
         ]
+        
+        # Displaying them in cards
         for s in schemes:
             st.markdown(f"""
             <div class="glass-card" style="padding: 15px; border-left: 5px solid #2e7d32;">
-                <h5 style="margin:0;">{s['name']} <span style="background:#e8f5e9; padding:2px 8px; border-radius:10px; font-size:12px; border: 1px solid #2e7d32;">{s['tag']}</span></h5>
-                <p style="margin:5px 0 0 0; font-size:14px;">{s['desc']}</p>
+                <h5 style="margin:0;">{s['name']} 
+                    <span style="background:#e8f5e9; padding:2px 8px; border-radius:10px; font-size:12px; border: 1px solid #2e7d32; float:right;">{s['tag']}</span>
+                </h5>
+                <p style="margin:5px 0 0 0; font-size:14px; color:#333 !important;">{s['desc']}</p>
             </div>
             """, unsafe_allow_html=True)
 
