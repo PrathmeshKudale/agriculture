@@ -9,7 +9,7 @@ st.set_page_config(
     page_title="GreenMitra AI",
     page_icon="🌿",
     layout="wide",
-    initial_sidebar_state="expanded" # Sidebar is back!
+    initial_sidebar_state="expanded"
 )
 
 # --- 2. KEYS ---
@@ -24,68 +24,144 @@ if "WEATHER_API_KEY" in st.secrets:
 else:
     WEATHER_API_KEY = ""
 
-# --- 3. MODERN UI CSS ---
+# --- 3. THE "FUTURISTIC AI" CSS (HTML/CSS ENGINE) ---
 st.markdown("""
     <style>
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap');
-    html, body, [class*="css"] { font-family: 'Inter', sans-serif; }
-    .stApp { background: linear-gradient(135deg, #e0f7fa 0%, #e8f5e9 100%); }
-    h1, h2, h3, h4, h5, h6, p, div, span, label, li, .stMarkdown, .stText { color: #000000 !important; }
-    .stTextInput > div > div > input { color: black !important; background-color: white !important; }
+    /* IMPORT FONTS */
+    @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Rajdhani:wght@300;500;700&display=swap');
+
+    /* GLOBAL RESET */
+    .stApp {
+        background-color: #050505;
+        background-image: 
+            radial-gradient(at 0% 0%, hsla(153,94%,26%,0.2) 0px, transparent 50%),
+            radial-gradient(at 100% 0%, hsla(153,94%,26%,0.2) 0px, transparent 50%);
+        color: #e0e0e0;
+        font-family: 'Rajdhani', sans-serif;
+    }
+
+    /* TYPOGRAPHY */
+    h1, h2, h3 {
+        font-family: 'Orbitron', sans-serif !important;
+        background: linear-gradient(90deg, #00ff88, #00cc6a);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        letter-spacing: 2px;
+        text-shadow: 0 0 20px rgba(0, 255, 136, 0.3);
+    }
+    
+    p, label, .stMarkdown {
+        color: #b0b0b0 !important;
+        font-size: 1.1rem;
+    }
+
+    /* 3D GLASS CARDS */
     .glass-card {
-        background: rgba(255, 255, 255, 0.65);
-        backdrop-filter: blur(12px);
-        border-radius: 20px;
-        border: 1px solid rgba(255, 255, 255, 0.5);
-        box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.07);
-        padding: 25px;
-        margin-bottom: 20px;
+        background: rgba(20, 20, 20, 0.6);
+        backdrop-filter: blur(16px);
+        -webkit-backdrop-filter: blur(16px);
+        border: 1px solid rgba(0, 255, 136, 0.1);
+        border-radius: 24px;
+        padding: 30px;
+        margin-bottom: 25px;
+        box-shadow: 0 10px 40px -10px rgba(0,0,0,0.5);
+        transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        position: relative;
+        overflow: hidden;
     }
+
+    /* 3D HOVER EFFECT */
+    .glass-card:hover {
+        transform: translateY(-5px) scale(1.01);
+        border: 1px solid rgba(0, 255, 136, 0.4);
+        box-shadow: 0 20px 50px -10px rgba(0, 255, 136, 0.15);
+    }
+
+    /* GLOWING BUTTONS */
     .stButton>button {
-        background: linear-gradient(90deg, #2e7d32 0%, #43a047 100%);
-        color: white !important;
+        background: transparent;
+        border: 2px solid #00ff88;
+        color: #00ff88 !important;
         border-radius: 12px;
-        padding: 12px 24px;
-        font-weight: 600;
-        width: 100%;
+        padding: 15px 30px;
+        font-family: 'Orbitron', sans-serif;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 1px;
         transition: all 0.3s ease;
+        box-shadow: 0 0 10px rgba(0, 255, 136, 0.1);
+        width: 100%;
     }
-    .stButton>button:hover { transform: scale(1.02); }
-    .stChatMessage { background-color: rgba(255, 255, 255, 0.5); border-radius: 15px; padding: 10px; margin-bottom: 10px; }
+
+    .stButton>button:hover {
+        background: #00ff88;
+        color: #000 !important;
+        box-shadow: 0 0 30px rgba(0, 255, 136, 0.6);
+        transform: translateY(-2px);
+    }
+
+    /* SIDEBAR STYLING */
+    section[data-testid="stSidebar"] {
+        background-color: #0a0a0a;
+        border-right: 1px solid #1f1f1f;
+    }
+
+    /* INPUT FIELDS */
+    .stTextInput > div > div > input, .stSelectbox > div > div > div {
+        background-color: #111 !important;
+        color: #00ff88 !important;
+        border: 1px solid #333;
+        border-radius: 10px;
+    }
+
+    /* CHAT BUBBLES */
+    .stChatMessage {
+        background: #111;
+        border: 1px solid #222;
+        border-radius: 15px;
+        transition: transform 0.2s;
+    }
+    .stChatMessage:hover {
+        transform: translateX(5px);
+        border-color: #00ff88;
+    }
+    
+    /* ANIMATION PULSE */
+    @keyframes pulse-green {
+        0% { box-shadow: 0 0 0 0 rgba(0, 255, 136, 0.4); }
+        70% { box-shadow: 0 0 0 10px rgba(0, 255, 136, 0); }
+        100% { box-shadow: 0 0 0 0 rgba(0, 255, 136, 0); }
+    }
+    .pulse-icon {
+        animation: pulse-green 2s infinite;
+        border-radius: 50%;
+    }
     </style>
 """, unsafe_allow_html=True)
 
-# --- 4. SMART FUNCTIONS (Auto-Model + Weather) ---
+# --- 4. SMART LOGIC ---
 def get_working_model():
     try:
-        available_models = []
-        for m in genai.list_models():
-            if 'generateContent' in m.supported_generation_methods:
-                available_models.append(m.name)
+        available_models = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
         for model in available_models:
             if 'flash' in model: return model
-        if available_models: return available_models[0]
-    except: pass
-    return "models/gemini-1.5-flash"
+        return available_models[0] if available_models else "models/gemini-1.5-flash"
+    except: return "models/gemini-1.5-flash"
 
 def get_ai_response(prompt, image=None):
     model_name = get_working_model()
     try:
         model = genai.GenerativeModel(model_name)
-        if image: return model.generate_content([prompt, image]).text
-        else: return model.generate_content(prompt).text
+        return model.generate_content([prompt, image] if image else prompt).text
     except Exception as e: return f"⚠️ Error: {str(e)}"
 
 def get_weather(city):
-    if not WEATHER_API_KEY: return "Unavailable", 25
+    if not WEATHER_API_KEY: return "Offline", 25
     try:
         url = f"http://api.openweathermap.org/data/2.5/weather?q={city}&appid={WEATHER_API_KEY}&units=metric"
-        response = requests.get(url)
-        data = response.json()
-        if response.status_code == 200:
-            return data['weather'][0]['main'], data['main']['temp']
-    except: pass
-    return "Clear", 25
+        data = requests.get(url).json()
+        return data['weather'][0]['main'], data['main']['temp']
+    except: return "Clear", 25
 
 def fetch_latest_schemes():
     try:
@@ -95,112 +171,102 @@ def fetch_latest_schemes():
         if feed.entries:
             for entry in feed.entries[:5]:
                 clean_title = entry.title.split(" - ")[0]
-                news_items.append(f"🔹 **{clean_title}**\n*Source: {entry.source.title}* | [Read More]({entry.link})")
-        if news_items: return "### 📢 Latest News (Live Feed)\n\n" + "\n\n".join(news_items)
+                news_items.append(f"🟢 **{clean_title}**\n*Source: {entry.source.title}* | [View]({entry.link})")
+        if news_items: return "### ⚡ Live Intelligence Feed\n\n" + "\n\n".join(news_items)
     except: pass
-    return "No recent updates found."
+    return "No live signal. Using backup database."
 
-# --- 5. MAIN APP LAYOUT ---
+# --- 5. APP LAYOUT ---
 def main():
-    # --- SIDEBAR (RESTORED) ---
+    # SIDEBAR
     with st.sidebar:
-        st.title("👤 Farmer Profile")
-        st.write("Set your location and language here.")
-        
-        name = st.text_input("Your Name", "Farmer")
-        city = st.text_input("Village/City", "Kolhapur")
-        
-        # Language Selector
-        lang = st.selectbox("Language / भाषा", ["English", "Marathi", "Hindi"])
+        st.markdown("## 👤 COMMAND CENTER")
+        name = st.text_input("Operator Name", "Farmer")
+        city = st.text_input("Target Location", "Kolhapur")
+        lang = st.selectbox("System Language", ["English", "Marathi", "Hindi"])
         
         st.markdown("---")
-        
-        # Weather Display in Sidebar
         w_cond, w_temp = get_weather(city)
         st.markdown(f"""
-        <div style="background:#e8f5e9; padding:15px; border-radius:10px; border:1px solid #2e7d32;">
-            <h3 style="margin:0; color:#1b5e20;">📍 {city}</h3>
-            <h2 style="margin:0; color:#2e7d32;">{w_temp}°C</h2>
-            <p style="margin:0;">{w_cond}</p>
+        <div style="background:#111; padding:20px; border-radius:15px; border:1px solid #00ff88; text-align:center;">
+            <h3 style="margin:0; font-size:24px;">{w_temp}°C</h3>
+            <p style="margin:0; color:#00ff88 !important; text-transform:uppercase; letter-spacing:2px;">{w_cond}</p>
+            <p style="font-size:12px; margin-top:5px;">📍 {city} Sector</p>
         </div>
         """, unsafe_allow_html=True)
-        
-    # --- MAIN CONTENT ---
-    c1, c2 = st.columns([1, 4])
-    with c1: st.write("## 🌿 AI")
-    with c2: st.write(f"## GreenMitra: Welcome, {name}")
-    
-    tabs = st.tabs(["📸 Crop Doctor", "🚀 Live Schemes", "🤖 Ask AI (Chat)", "📅 Smart Planner"])
 
-    # === TAB 1: CROP DOCTOR ===
+    # HEADER
+    st.markdown(f"""
+    <div style="text-align: center; margin-bottom: 40px;">
+        <h1 style="font-size: 3.5rem; margin-bottom: 0;">GREENMITRA AI</h1>
+        <p style="font-size: 1.2rem; color: #00ff88 !important; letter-spacing: 3px; text-transform: uppercase;">Next-Gen Agricultural Intelligence</p>
+    </div>
+    """, unsafe_allow_html=True)
+
+    # TABS
+    tabs = st.tabs(["🧬 CROP DIAGNOSTICS", "📡 LIVE RADAR", "🤖 NEURAL CHAT", "📅 TACTICAL PLANNER"])
+
+    # TAB 1: DIAGNOSIS
     with tabs[0]:
-        st.markdown('<div class="glass-card"><h4>🩺 AI Plant Diagnosis</h4></div>', unsafe_allow_html=True)
-        col1, col2 = st.columns([1, 1])
-        with col1:
-            mode = st.radio("Select Input", ["Upload File", "Camera"], horizontal=True)
-            file = None
-            if mode == "Camera": file = st.camera_input("Scan Leaf")
-            else: file = st.file_uploader("Upload Image", type=['jpg','png'])
-        with col2:
+        st.markdown('<div class="glass-card"><h3>🧬 AI Visual Analysis</h3><p>Upload bio-sample for instant neural diagnosis.</p></div>', unsafe_allow_html=True)
+        c1, c2 = st.columns([1, 1])
+        with c1:
+            mode = st.radio("Input Source", ["Upload File", "Camera"], horizontal=True)
+            file = st.camera_input("Scan Bio-Sample") if mode == "Camera" else st.file_uploader("Upload Data", type=['jpg','png'])
+        with c2:
             if file:
-                st.image(file, width=200)
-                if st.button("Diagnose Now"):
-                    with st.spinner("AI is analyzing..."):
+                st.image(file, width=250, caption="Sample Acquired")
+                if st.button("INITIATE SCAN"):
+                    with st.spinner("PROCESSING NEURAL NETWORKS..."):
                         img_bytes = file.getvalue()
-                        image_parts = {"mime_type": "image/jpeg", "data": img_bytes}
-                        # Pass Language to Prompt
-                        prompt = f"You are an Agronomist. Identify the disease, give remedy. Language: {lang}. Keep it under 150 words."
-                        res = get_ai_response(prompt, image_parts)
-                        st.markdown(f'<div class="glass-card"><b>✅ Report ({lang}):</b><br>{res}</div>', unsafe_allow_html=True)
+                        prompt = f"Expert Agronomist. Identify disease, remedy. Language: {lang}. Short format."
+                        res = get_ai_response(prompt, {"mime_type": "image/jpeg", "data": img_bytes})
+                        st.markdown(f'<div class="glass-card" style="border-color:#00ff88;"><h4>✅ ANALYSIS COMPLETE</h4>{res}</div>', unsafe_allow_html=True)
 
-    # === TAB 2: NEWS ===
+    # TAB 2: NEWS
     with tabs[1]:
-        st.markdown('<div class="glass-card"><h4>📡 Live Google News Radar</h4></div>', unsafe_allow_html=True)
-        if st.button("🔄 Scan Google News"):
-            with st.spinner("Scanning..."):
+        st.markdown('<div class="glass-card"><h3>📡 Government Uplink</h3><p>Scanning frequency for latest schemes...</p></div>', unsafe_allow_html=True)
+        if st.button("ACTIVATE RADAR"):
+            with st.spinner("ESTABLISHING UPLINK..."):
                 latest_news = fetch_latest_schemes()
                 st.markdown(f'<div class="glass-card">{latest_news}</div>', unsafe_allow_html=True)
-
-        st.markdown("### 🏛️ Famous Schemes")
-        schemes = [{"name": "PM-KISAN", "desc": "₹6,000/year income support."}, {"name": "PMFBY", "desc": "Crop insurance scheme."}, {"name": "KCC", "desc": "Low interest Kisan Credit Card loans."}]
-        for s in schemes:
-            st.markdown(f"""<div class="glass-card" style="padding:10px; border-left:5px solid #2e7d32;"><h5>{s['name']}</h5><p>{s['desc']}</p></div>""", unsafe_allow_html=True)
-
-    # === TAB 3: CHATBOT ===
-    with tabs[2]:
-        st.markdown('<div class="glass-card"><h4>🤖 Farmer Chat Assistant</h4></div>', unsafe_allow_html=True)
         
-        if "messages" not in st.session_state:
-            st.session_state.messages = [{"role": "assistant", "content": f"Namaste! Ask me in {lang}."}]
+        st.markdown("### 💾 Offline Database")
+        schemes = [{"name": "PM-KISAN", "id": "UID-01"}, {"name": "PMFBY", "id": "UID-02"}, {"name": "KCC", "id": "UID-03"}]
+        c1, c2, c3 = st.columns(3)
+        for idx, s in enumerate(schemes):
+            with [c1, c2, c3][idx]:
+                st.markdown(f"""<div class="glass-card" style="text-align:center;">
+                    <h4 style="color:#00ff88;">{s['name']}</h4>
+                    <p style="font-size:12px;">ID: {s['id']}</p>
+                </div>""", unsafe_allow_html=True)
 
-        for message in st.session_state.messages:
-            with st.chat_message(message["role"]):
-                st.markdown(message["content"])
-
-        if prompt := st.chat_input("Ask about seeds, fertilizer..."):
+    # TAB 3: CHAT
+    with tabs[2]:
+        st.markdown('<div class="glass-card"><h3>🤖 Neural Assistant Interface</h3></div>', unsafe_allow_html=True)
+        if "messages" not in st.session_state: st.session_state.messages = [{"role": "assistant", "content": "System Online. Awaiting queries."}]
+        for msg in st.session_state.messages:
+            with st.chat_message(msg["role"]): st.markdown(msg["content"])
+        
+        if prompt := st.chat_input("Enter Command..."):
             st.session_state.messages.append({"role": "user", "content": prompt})
-            with st.chat_message("user"):
-                st.markdown(prompt)
-
+            with st.chat_message("user"): st.markdown(prompt)
             with st.chat_message("assistant"):
-                with st.spinner("Thinking..."):
-                    # Pass Language to Chatbot Prompt
-                    system_prompt = f"Act as an Indian Agriculture Expert. Reply in {lang} language. User Question: {prompt}"
-                    ai_reply = get_ai_response(system_prompt)
+                with st.spinner("COMPUTING..."):
+                    ai_reply = get_ai_response(f"Expert Agronomist. Lang: {lang}. Q: {prompt}")
                     st.markdown(ai_reply)
                     st.session_state.messages.append({"role": "assistant", "content": ai_reply})
 
-    # === TAB 4: PLANNER ===
+    # TAB 4: PLANNER
     with tabs[3]:
-        st.markdown('<div class="glass-card"><h4>📅 Lifecycle Manager</h4></div>', unsafe_allow_html=True)
+        st.markdown('<div class="glass-card"><h3>📅 Lifecycle Monitor</h3></div>', unsafe_allow_html=True)
         c1, c2 = st.columns(2)
-        with c1: crop = st.selectbox("Select Crop", ["Wheat", "Rice", "Cotton", "Sugarcane"])
-        with c2: date = st.date_input("Sowing Date", datetime.date.today())
+        with c1: crop = st.selectbox("Target Organism", ["Wheat", "Rice", "Cotton"])
+        with c2: date = st.date_input("Inception Date", datetime.date.today())
         days = (datetime.date.today() - date).days
-        st.metric("Crop Age", f"{days} Days")
-        if days < 20: st.info("🌱 Stage: Germination.")
-        elif days < 60: st.success("🌿 Stage: Vegetative.")
-        else: st.warning("🌾 Stage: Harvest.")
+        st.metric("Organism Age", f"{days} Cycles")
+        status = "🟢 OPTIMAL" if days < 60 else "🔴 HARVEST READY"
+        st.markdown(f'<div class="glass-card" style="text-align:center;"><h1>{status}</h1></div>', unsafe_allow_html=True)
 
 if __name__ == "__main__":
     main()
