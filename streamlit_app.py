@@ -28,135 +28,55 @@ else:
 # --- 3. "AGROVA STYLE" CSS (Clean & Green) ---
 st.markdown("""
     <style>
-    /* IMPORT GOOGLE FONTS (Poppins for modern feel) */
     @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap');
 
-    /* GLOBAL RESET - LIGHT THEME */
-    .stApp {
-        background-color: #f8fcf8; /* Very light mint white */
-        font-family: 'Poppins', sans-serif;
-        color: #1f3a28;
-    }
+    .stApp { background-color: #f8fcf8; font-family: 'Poppins', sans-serif; color: #1f3a28; }
+    .block-container { padding-top: 2rem; padding-bottom: 5rem; }
 
-    /* REMOVE DEFAULT STREAMLIT PADDING */
-    .block-container {
-        padding-top: 2rem;
-        padding-bottom: 5rem;
-    }
-
-    /* HERO SECTION STYLING */
+    /* HERO SECTION */
     .hero-container {
         background: linear-gradient(135deg, #134e28 0%, #2e7d32 100%);
-        border-radius: 20px;
-        padding: 40px;
-        color: white;
-        margin-bottom: 30px;
-        box-shadow: 0 10px 30px rgba(46, 125, 50, 0.2);
-        position: relative;
-        overflow: hidden;
+        border-radius: 20px; padding: 40px; color: white;
+        margin-bottom: 30px; box-shadow: 0 10px 30px rgba(46, 125, 50, 0.2);
     }
-    .hero-title {
-        font-size: 3rem;
-        font-weight: 700;
-        margin-bottom: 10px;
-    }
-    .hero-subtitle {
-        font-size: 1.2rem;
-        opacity: 0.9;
-        font-weight: 300;
-    }
+    .hero-title { font-size: 3rem; font-weight: 700; margin-bottom: 10px; }
+    .hero-subtitle { font-size: 1.2rem; opacity: 0.9; font-weight: 300; }
 
-    /* CARD DESIGN (Agrova Style) */
+    /* CARDS */
     .feature-card {
-        background: white;
-        border-radius: 16px;
-        padding: 25px;
-        box-shadow: 0 4px 20px rgba(0,0,0,0.05);
-        border: 1px solid #e0eadd;
-        transition: transform 0.3s ease;
-        height: 100%;
+        background: white; border-radius: 16px; padding: 25px;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.05); border: 1px solid #e0eadd;
+        transition: transform 0.3s ease; height: 100%;
     }
-    .feature-card:hover {
-        transform: translateY(-5px);
-        box-shadow: 0 10px 25px rgba(46, 125, 50, 0.1);
-        border-color: #81c784;
-    }
+    .feature-card:hover { transform: translateY(-5px); border-color: #81c784; }
     .card-icon {
-        font-size: 30px;
-        background: #e8f5e9;
-        width: 60px;
-        height: 60px;
-        border-radius: 50%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        margin-bottom: 15px;
-        color: #2e7d32;
+        font-size: 30px; background: #e8f5e9; width: 60px; height: 60px;
+        border-radius: 50%; display: flex; align-items: center; justify-content: center;
+        margin-bottom: 15px; color: #2e7d32;
     }
 
-    /* CUSTOM BUTTONS */
+    /* BUTTONS & INPUTS */
     .stButton>button {
-        background-color: #4CAF50 !important;
-        color: white !important;
-        border: none;
-        border-radius: 50px; /* Pill shape */
-        padding: 12px 30px;
-        font-weight: 600;
-        font-size: 16px;
-        box-shadow: 0 4px 15px rgba(76, 175, 80, 0.3);
-        transition: all 0.3s;
-        width: 100%;
+        background-color: #4CAF50 !important; color: white !important;
+        border-radius: 50px; padding: 12px 30px; font-weight: 600; width: 100%;
     }
-    .stButton>button:hover {
-        background-color: #388E3C !important;
-        transform: scale(1.02);
-    }
-
-    /* INPUT FIELDS */
     .stTextInput > div > div > input, .stSelectbox > div > div > div {
-        border-radius: 12px;
-        border: 1px solid #dcdcdc;
-        background-color: white;
-        color: #333;
-    }
-    .stTextInput > div > div > input:focus {
-        border-color: #4CAF50;
-        box-shadow: 0 0 0 2px rgba(76, 175, 80, 0.2);
-    }
-
-    /* TABS */
-    .stTabs [data-baseweb="tab-list"] {
-        gap: 10px;
-        background-color: white;
-        padding: 10px;
-        border-radius: 50px;
-        box-shadow: 0 2px 10px rgba(0,0,0,0.05);
-        display: inline-flex; /* Fix for layout */
-    }
-    .stTabs [data-baseweb="tab"] {
-        border-radius: 30px;
-        padding: 10px 20px;
-        background-color: transparent;
-        color: #555;
-        font-weight: 600;
-        border: none;
-    }
-    .stTabs [aria-selected="true"] {
-        background-color: #2e7d32 !important;
-        color: white !important;
+        border-radius: 12px; border: 1px solid #dcdcdc; background-color: white; color: #333;
     }
     
+    /* TABS */
+    .stTabs [data-baseweb="tab-list"] { background-color: white; padding: 10px; border-radius: 50px; gap: 10px; }
+    .stTabs [data-baseweb="tab"] { border-radius: 30px; border: none; font-weight: 600; }
+    .stTabs [aria-selected="true"] { background-color: #2e7d32 !important; color: white !important; }
+
     /* TEXT COLORS */
     h1, h2, h3, h4 { color: #1b5e20 !important; }
     p, li { color: #4a5d50 !important; }
-    
-    /* HIDE DEFAULT ELEMENTS */
-    #MainMenu {visibility: hidden;}
-    footer {visibility: hidden;}
+    #MainMenu, footer { visibility: hidden; }
     </style>
 """, unsafe_allow_html=True)
 
-# --- 4. SMART LOGIC (Kept exactly the same) ---
+# --- 4. SMART LOGIC ---
 def get_working_model():
     try:
         available_models = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
@@ -201,23 +121,37 @@ def fetch_latest_schemes():
 
 # --- 5. MAIN APP LAYOUT ---
 def main():
-    # --- HERO SECTION (HTML INJECTION) ---
+    # --- HERO SECTION ---
     st.markdown("""
         <div class="hero-container">
             <div style="max-width: 800px;">
-                <div class="hero-title">Empowering Indian Farmers</div>
-                <div class="hero-subtitle">Next-Gen AI tools for smarter, sustainable farming. Crop diagnosis, live schemes, and expert chat in one place.</div>
+                <div class="hero-title">GreenMitra AI</div>
+                <div class="hero-subtitle">Empowering farmers with AI Diagnostics, Live Schemes, and Multi-Language Chat.</div>
             </div>
-            <div style="position:absolute; right:-50px; top:-50px; width:200px; height:200px; background:rgba(255,255,255,0.1); border-radius:50%;"></div>
         </div>
     """, unsafe_allow_html=True)
 
-    # --- SETTINGS ROW ---
+    # --- SETTINGS ROW (ALL LANGUAGES ADDED HERE) ---
     with st.container():
         c1, c2, c3, c4 = st.columns([2, 2, 2, 1])
         with c1: name = st.text_input("Name / नाव", "Kisan Bhai")
         with c2: city = st.text_input("Village / गाव", "Pune")
-        with c3: lang = st.selectbox("Language / भाषा", ["English", "Marathi", "Hindi"])
+        with c3: 
+            # THE COMPLETE LIST OF INDIAN LANGUAGES
+            lang = st.selectbox("Language / भाषा", [
+                "English", 
+                "Marathi (मराठी)", 
+                "Hindi (हिंदी)", 
+                "Tamil (தமிழ்)", 
+                "Telugu (తెలుగు)", 
+                "Urdu (اردو)", 
+                "Gujarati (ગુજરાતી)", 
+                "Kannada (ಕನ್ನಡ)", 
+                "Malayalam (മലയാളം)", 
+                "Punjabi (ਪੰਜਾਬੀ)", 
+                "Assamese (অসমীয়া)", 
+                "Odia (ଓଡ଼ିଆ)"
+            ])
         with c4: 
             w_cond, w_temp = get_weather(city)
             st.markdown(f"""
@@ -229,7 +163,7 @@ def main():
 
     st.write("---")
 
-    # --- MODERN TABS ---
+    # --- TABS ---
     tabs = st.tabs(["🌾 Crop Doctor", "📢 Yojana & News", "🤖 Kisan Chat", "📅 My Planner"])
 
     # === TAB 1: CROP DOCTOR ===
@@ -240,7 +174,7 @@ def main():
             <div class="feature-card">
                 <div class="card-icon">📸</div>
                 <h3>AI Crop Diagnosis</h3>
-                <p>Upload a photo of your crop leaf. Our AI will detect diseases and suggest organic remedies instantly.</p>
+                <p>Upload a photo of your crop leaf. Get instant remedy in your language.</p>
             </div>
             """, unsafe_allow_html=True)
             mode = st.radio("Select Source", ["Upload Image", "Open Camera"], horizontal=True)
@@ -254,7 +188,8 @@ def main():
                 if st.button("Analyze Crop Health"):
                     with st.spinner("Consulting AI Expert..."):
                         img_bytes = file.getvalue()
-                        prompt = f"You are an expert Indian Agronomist. Identify the disease, give 1 organic and 1 chemical remedy. Language: {lang}."
+                        # Pass selected Language to AI
+                        prompt = f"You are an expert Indian Agronomist. Identify the disease, give 1 organic and 1 chemical remedy. Reply strictly in {lang} language."
                         res = get_ai_response(prompt, {"mime_type": "image/jpeg", "data": img_bytes})
                         st.success("Analysis Complete!")
                         st.markdown(f"<div style='background:#f1f8e9; padding:20px; border-radius:10px;'>{res}</div>", unsafe_allow_html=True)
@@ -263,14 +198,11 @@ def main():
     # === TAB 2: NEWS & SCHEMES ===
     with tabs[1]:
         col1, col2 = st.columns([2, 1])
-        
         with col1:
             st.markdown("### 📡 Live Government Updates")
-            if st.button("Refresh Feed"):
-                st.rerun()
+            if st.button("Refresh Feed"): st.rerun()
             news_html = fetch_latest_schemes()
             st.markdown(news_html, unsafe_allow_html=True)
-            
         with col2:
             st.markdown("### 🏛️ Famous Schemes")
             schemes = [
@@ -286,26 +218,25 @@ def main():
                 </div>
                 """, unsafe_allow_html=True)
 
-    # === TAB 3: CHAT ===
+    # === TAB 3: CHAT (MULTI-LANGUAGE ENABLED) ===
     with tabs[2]:
         st.markdown('<div class="feature-card" style="min-height:500px;">', unsafe_allow_html=True)
-        st.subheader("💬 Ask GreenMitra")
+        st.subheader(f"💬 Ask GreenMitra ({lang})")
         
         if "messages" not in st.session_state:
-            st.session_state.messages = [{"role": "assistant", "content": f"Namaste {name}! How can I help your farm today?"}]
+            st.session_state.messages = [{"role": "assistant", "content": f"Namaste {name}! I can speak {lang}. How can I help?"}]
 
         for msg in st.session_state.messages:
-            with st.chat_message(msg["role"]):
-                st.markdown(msg["content"])
+            with st.chat_message(msg["role"]): st.markdown(msg["content"])
 
         if prompt := st.chat_input("Ask about seeds, weather, or fertilizer..."):
             st.session_state.messages.append({"role": "user", "content": prompt})
-            with st.chat_message("user"):
-                st.markdown(prompt)
+            with st.chat_message("user"): st.markdown(prompt)
 
             with st.chat_message("assistant"):
                 with st.spinner("Thinking..."):
-                    system_prompt = f"Act as an Indian Agriculture Expert. Reply in {lang}. User Question: {prompt}"
+                    # CRITICAL: Tell AI to reply in the selected language
+                    system_prompt = f"Act as an Indian Agriculture Expert. Reply strictly in {lang} language. User Question: {prompt}"
                     ai_reply = get_ai_response(system_prompt)
                     st.markdown(ai_reply)
                     st.session_state.messages.append({"role": "assistant", "content": ai_reply})
@@ -323,16 +254,14 @@ def main():
             """, unsafe_allow_html=True)
         with c2:
             st.markdown('<div class="feature-card">', unsafe_allow_html=True)
-            crop = st.selectbox("Select Crop", ["Wheat (गहू)", "Rice (तांदूळ)", "Cotton (कापूस)", "Sugarcane (ऊस)"])
+            crop = st.selectbox("Select Crop", ["Wheat", "Rice", "Cotton", "Sugarcane"])
             date = st.date_input("Sowing Date", datetime.date.today())
-            
             days = (datetime.date.today() - date).days
             st.markdown(f"<h1 style='text-align:center; color:#2e7d32; font-size:60px; margin:0;'>{days}</h1>", unsafe_allow_html=True)
             st.markdown("<p style='text-align:center;'>Days Old</p>", unsafe_allow_html=True)
-            
-            if days < 20: st.info("🌱 Phase: Germination. Keep soil moist.")
-            elif days < 60: st.success("🌿 Phase: Vegetative. Apply Nitrogen.")
-            else: st.warning("🌾 Phase: Maturity. Prepare for harvest.")
+            if days < 20: st.info("🌱 Phase: Germination.")
+            elif days < 60: st.success("🌿 Phase: Vegetative.")
+            else: st.warning("🌾 Phase: Maturity.")
             st.markdown('</div>', unsafe_allow_html=True)
 
     # --- FOOTER ---
