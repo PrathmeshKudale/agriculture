@@ -25,7 +25,7 @@ if "WEATHER_API_KEY" in st.secrets:
 else:
     WEATHER_API_KEY = ""
 
-# --- 3. "AGROVA STYLE" CSS (Clean & Green) ---
+# --- 3. CSS STYLING (Agrova Clean Look) ---
 st.markdown("""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap');
@@ -40,8 +40,7 @@ st.markdown("""
         margin-bottom: 30px; box-shadow: 0 10px 30px rgba(46, 125, 50, 0.2);
     }
     .hero-title { font-size: 3rem; font-weight: 700; margin-bottom: 10px; }
-    .hero-subtitle { font-size: 1.2rem; opacity: 0.9; font-weight: 300; }
-
+    
     /* CARDS */
     .feature-card {
         background: white; border-radius: 16px; padding: 25px;
@@ -49,11 +48,6 @@ st.markdown("""
         transition: transform 0.3s ease; height: 100%;
     }
     .feature-card:hover { transform: translateY(-5px); border-color: #81c784; }
-    .card-icon {
-        font-size: 30px; background: #e8f5e9; width: 60px; height: 60px;
-        border-radius: 50%; display: flex; align-items: center; justify-content: center;
-        margin-bottom: 15px; color: #2e7d32;
-    }
 
     /* BUTTONS & INPUTS */
     .stButton>button {
@@ -69,9 +63,7 @@ st.markdown("""
     .stTabs [data-baseweb="tab"] { border-radius: 30px; border: none; font-weight: 600; }
     .stTabs [aria-selected="true"] { background-color: #2e7d32 !important; color: white !important; }
 
-    /* TEXT COLORS */
     h1, h2, h3, h4 { color: #1b5e20 !important; }
-    p, li { color: #4a5d50 !important; }
     #MainMenu, footer { visibility: hidden; }
     </style>
 """, unsafe_allow_html=True)
@@ -100,24 +92,51 @@ def get_weather(city):
         return data['weather'][0]['main'], data['main']['temp']
     except: return "Clear", 25
 
-def fetch_latest_schemes():
+# --- NEW FUNCTION: TRANSLATED NEWS ---
+def fetch_translated_news(language):
+    """
+    Fetches English news and uses AI to translate it into the selected Indian Language.
+    """
     try:
+        # 1. Get Raw English News
         feed_url = "https://news.google.com/rss/search?q=India+Agriculture+Schemes+Government+announce+launch+when:30d&hl=en-IN&gl=IN&ceid=IN:en"
         feed = feedparser.parse(feed_url)
-        news_items = []
+        
+        headlines = []
         if feed.entries:
             for entry in feed.entries[:4]:
+                headlines.append(f"- {entry.title} (Source: {entry.source.title})")
+        
+        raw_text = "\n".join(headlines)
+
+        # 2. If Language is English, show directly
+        if "English" in language:
+            formatted_news = []
+            for entry in feed.entries[:4]:
                 clean_title = entry.title.split(" - ")[0]
-                news_items.append(f"""
+                formatted_news.append(f"""
                 <div style="background:#f1f8e9; padding:15px; border-radius:10px; margin-bottom:10px; border-left:4px solid #4CAF50;">
                     <strong style="color:#2e7d32;">{clean_title}</strong><br>
-                    <span style="font-size:12px; color:#666;">Source: {entry.source.title}</span> 
                     <a href="{entry.link}" style="float:right; color:#4CAF50; text-decoration:none; font-weight:bold;">Read &rarr;</a>
-                </div>
-                """)
-        if news_items: return "".join(news_items)
+                </div>""")
+            return "".join(formatted_news)
+
+        # 3. If Indian Language, Ask AI to Translate
+        prompt = f"""
+        Translate these agriculture news headlines into {language}.
+        Format them as a clean HTML list.
+        Headlines:
+        {raw_text}
+        
+        Output format example:
+        <div style="background:#f1f8e9; padding:15px; border-radius:10px; margin-bottom:10px; border-left:4px solid #4CAF50;">
+            <strong style="color:#2e7d32;">[Translated Headline]</strong><br>
+        </div>
+        """
+        return get_ai_response(prompt)
+
     except: pass
-    return "<div style='padding:20px; background:#fff3e0; border-radius:10px; color:#e65100;'>⚠️ Live Feed Unavailable. Checking Offline Database...</div>"
+    return "<div style='padding:20px; background:#fff3e0; color:#e65100;'>⚠️ Feed Unavailable.</div>"
 
 # --- 5. MAIN APP LAYOUT ---
 def main():
@@ -126,18 +145,18 @@ def main():
         <div class="hero-container">
             <div style="max-width: 800px;">
                 <div class="hero-title">GreenMitra AI</div>
-                <div class="hero-subtitle">Empowering farmers with AI Diagnostics, Live Schemes, and Multi-Language Chat.</div>
+                <div style="font-size:1.2rem;">Empowering Farmers in Every Language.</div>
             </div>
         </div>
     """, unsafe_allow_html=True)
 
-    # --- SETTINGS ROW (ALL LANGUAGES ADDED HERE) ---
+    # --- SETTINGS ROW ---
     with st.container():
         c1, c2, c3, c4 = st.columns([2, 2, 2, 1])
         with c1: name = st.text_input("Name / नाव", "Kisan Bhai")
         with c2: city = st.text_input("Village / गाव", "Pune")
         with c3: 
-            # THE COMPLETE LIST OF INDIAN LANGUAGES
+            # SELECT LANGUAGE
             lang = st.selectbox("Language / भाषा", [
                 "English", 
                 "Marathi (मराठी)", 
@@ -164,17 +183,17 @@ def main():
     st.write("---")
 
     # --- TABS ---
-    tabs = st.tabs(["🌾 Crop Doctor", "📢 Yojana & News", "🤖 Kisan Chat", "📅 My Planner"])
+    tabs = st.tabs(["🌾 Crop Doctor", "📢 Yojana (Schemes)", "🤖 Kisan Chat", "📅 My Planner"])
 
     # === TAB 1: CROP DOCTOR ===
     with tabs[0]:
         c1, c2 = st.columns([1, 1])
         with c1:
-            st.markdown("""
+            st.markdown(f"""
             <div class="feature-card">
-                <div class="card-icon">📸</div>
-                <h3>AI Crop Diagnosis</h3>
-                <p>Upload a photo of your crop leaf. Get instant remedy in your language.</p>
+                <h3>📸 AI Crop Diagnosis</h3>
+                <p>Selected Language: <b>{lang}</b></p>
+                <p>Upload a photo. The AI will write the report in your language.</p>
             </div>
             """, unsafe_allow_html=True)
             mode = st.radio("Select Source", ["Upload Image", "Open Camera"], horizontal=True)
@@ -185,57 +204,53 @@ def main():
             
             if file:
                 st.image(file, width=200, caption="Uploaded Sample")
-                if st.button("Analyze Crop Health"):
-                    with st.spinner("Consulting AI Expert..."):
+                if st.button("Analyze Now"):
+                    with st.spinner(f"Analyzing in {lang}..."):
                         img_bytes = file.getvalue()
-                        # Pass selected Language to AI
-                        prompt = f"You are an expert Indian Agronomist. Identify the disease, give 1 organic and 1 chemical remedy. Reply strictly in {lang} language."
+                        prompt = f"You are an expert Agronomist. Identify the disease, give remedies. Reply strictly in {lang} language."
                         res = get_ai_response(prompt, {"mime_type": "image/jpeg", "data": img_bytes})
-                        st.success("Analysis Complete!")
                         st.markdown(f"<div style='background:#f1f8e9; padding:20px; border-radius:10px;'>{res}</div>", unsafe_allow_html=True)
             st.markdown('</div>', unsafe_allow_html=True)
 
-    # === TAB 2: NEWS & SCHEMES ===
+    # === TAB 2: NEWS & SCHEMES (AUTO-TRANSLATED) ===
     with tabs[1]:
         col1, col2 = st.columns([2, 1])
         with col1:
-            st.markdown("### 📡 Live Government Updates")
-            if st.button("Refresh Feed"): st.rerun()
-            news_html = fetch_latest_schemes()
-            st.markdown(news_html, unsafe_allow_html=True)
-        with col2:
-            st.markdown("### 🏛️ Famous Schemes")
-            schemes = [
-                {"name": "PM-KISAN", "desc": "₹6,000/year support."},
-                {"name": "PMFBY", "desc": "Crop Insurance."},
-                {"name": "Soil Health Card", "desc": "Free soil testing."}
-            ]
-            for s in schemes:
-                st.markdown(f"""
-                <div style="background:white; padding:15px; border-radius:12px; margin-bottom:10px; border:1px solid #eee; box-shadow:0 2px 5px rgba(0,0,0,0.05);">
-                    <h4 style="margin:0; color:#1b5e20;">{s['name']}</h4>
-                    <p style="margin:0; font-size:13px; color:#666;">{s['desc']}</p>
-                </div>
-                """, unsafe_allow_html=True)
+            st.markdown(f"### 📡 Live Updates ({lang})")
+            if st.button("🔴 Fetch & Translate News"):
+                with st.spinner("Fetching and Translating..."):
+                    news_html = fetch_translated_news(lang)
+                    st.markdown(news_html, unsafe_allow_html=True)
+            else:
+                st.info("Click the button to load news in your language.")
 
-    # === TAB 3: CHAT (MULTI-LANGUAGE ENABLED) ===
+        with col2:
+            st.markdown(f"### 🏛️ Famous Schemes ({lang})")
+            # We ask AI to generate the static list in the user's language
+            if st.button("Load Schemes List"):
+                with st.spinner("Loading..."):
+                    scheme_prompt = f"List 3 famous Indian government agriculture schemes (like PM-KISAN) with 1-line description in {lang}."
+                    res = get_ai_response(scheme_prompt)
+                    st.markdown(f"<div class='feature-card'>{res}</div>", unsafe_allow_html=True)
+
+    # === TAB 3: CHAT (MULTI-LANGUAGE) ===
     with tabs[2]:
         st.markdown('<div class="feature-card" style="min-height:500px;">', unsafe_allow_html=True)
-        st.subheader(f"💬 Ask GreenMitra ({lang})")
+        st.subheader(f"💬 Chat ({lang})")
         
         if "messages" not in st.session_state:
-            st.session_state.messages = [{"role": "assistant", "content": f"Namaste {name}! I can speak {lang}. How can I help?"}]
+            st.session_state.messages = [{"role": "assistant", "content": f"Namaste! I speak {lang}. Ask me anything."}]
 
         for msg in st.session_state.messages:
             with st.chat_message(msg["role"]): st.markdown(msg["content"])
 
-        if prompt := st.chat_input("Ask about seeds, weather, or fertilizer..."):
+        if prompt := st.chat_input("Ask here..."):
             st.session_state.messages.append({"role": "user", "content": prompt})
             with st.chat_message("user"): st.markdown(prompt)
 
             with st.chat_message("assistant"):
                 with st.spinner("Thinking..."):
-                    # CRITICAL: Tell AI to reply in the selected language
+                    # CRITICAL: Force AI to use the selected language
                     system_prompt = f"Act as an Indian Agriculture Expert. Reply strictly in {lang} language. User Question: {prompt}"
                     ai_reply = get_ai_response(system_prompt)
                     st.markdown(ai_reply)
@@ -249,7 +264,7 @@ def main():
             st.markdown("""
             <div class="feature-card">
                 <h3>📅 Crop Calendar</h3>
-                <p>Track your crop age and get timely advice.</p>
+                <p>Track your crop age.</p>
             </div>
             """, unsafe_allow_html=True)
         with c2:
@@ -259,9 +274,9 @@ def main():
             days = (datetime.date.today() - date).days
             st.markdown(f"<h1 style='text-align:center; color:#2e7d32; font-size:60px; margin:0;'>{days}</h1>", unsafe_allow_html=True)
             st.markdown("<p style='text-align:center;'>Days Old</p>", unsafe_allow_html=True)
-            if days < 20: st.info("🌱 Phase: Germination.")
-            elif days < 60: st.success("🌿 Phase: Vegetative.")
-            else: st.warning("🌾 Phase: Maturity.")
+            if days < 20: st.info("🌱 Germination Phase")
+            elif days < 60: st.success("🌿 Vegetative Phase")
+            else: st.warning("🌾 Harvest Phase")
             st.markdown('</div>', unsafe_allow_html=True)
 
     # --- FOOTER ---
