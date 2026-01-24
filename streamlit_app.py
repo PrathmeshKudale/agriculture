@@ -143,7 +143,7 @@ def main():
     with col1:
         # LOGO IMAGE
         # Make sure 'logo.jpg' is in your folder
-        try: st.image("logo.jpg", width=220) 
+        try: st.image("logo.jpg", width=80px) 
         except: st.write("🌾")
         
     with col2:
