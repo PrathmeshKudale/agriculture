@@ -24,88 +24,58 @@ if "WEATHER_API_KEY" in st.secrets:
 else:
     WEATHER_API_KEY = ""
 
-# --- 3. CSS STYLING (THE BLACK MENU FIX) ---
+# --- 3. CSS STYLING ---
 st.markdown("""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap');
     
     /* 1. RESET THEME */
-    .stApp { 
-        background-color: #f8fcf8; 
-        font-family: 'Poppins', sans-serif; 
-    }
+    .stApp { background-color: #f8fcf8; font-family: 'Poppins', sans-serif; }
     
     /* 2. FORCE BLACK TEXT */
-    h1, h2, h3, h4, h5, h6, p, div, span, label, li, .stMarkdown { 
-        color: #1a1a1a !important; 
-    }
+    h1, h2, h3, h4, h5, h6, p, div, span, label, li, .stMarkdown { color: #1a1a1a !important; }
 
-    /* --- 3. DROPDOWN MENU FIX (The Black Box Fix) --- */
-    /* This targets the exact popover box */
-    div[data-baseweb="popover"] {
+    /* 3. DROPDOWN MENU FIX */
+    div[data-baseweb="popover"], div[data-baseweb="select"] > div, ul[data-baseweb="menu"] {
         background-color: white !important;
         border: 1px solid #ccc !important;
     }
-    /* This targets the list inside */
-    ul[data-baseweb="menu"] {
-        background-color: white !important;
-    }
-    /* This targets the options */
     li[data-baseweb="option"] {
         background-color: white !important;
         color: black !important;
-        opacity: 1 !important;
     }
-    /* Hover state */
     li[data-baseweb="option"]:hover {
         background-color: #e8f5e9 !important;
         color: black !important;
     }
-    /* Selected state */
-    li[data-baseweb="option"][aria-selected="true"] {
-        background-color: #138808 !important;
-        color: white !important;
-    }
-    /* The main box you click on */
-    div[data-baseweb="select"] > div {
-        background-color: white !important;
-        color: black !important;
-        border: 1px solid #ccc !important;
-    }
-    /* ------------------------------------- */
 
     /* 4. NAVBAR & HERO */
     .hero-container {
         background: white;
-        border-bottom: 4px solid #ff9933; /* Saffron Line */
-        padding: 20px 20px;
+        border-bottom: 4px solid #ff9933;
+        padding: 20px;
         margin: -1rem -1rem 20px -1rem;
         display: flex; align-items: center;
         box-shadow: 0 4px 10px rgba(0,0,0,0.05);
     }
 
-    /* 5. CARDS */
+    /* 5. CARDS & BUTTONS */
     .feature-card {
         background: white; border-radius: 12px; padding: 20px;
         box-shadow: 0 2px 8px rgba(0,0,0,0.05); border: 1px solid #e0e0e0;
         margin-bottom: 15px;
     }
-    
-    /* 6. BUTTONS */
     .stButton>button {
-        background: #138808 !important;
-        color: white !important;
-        border-radius: 8px; border: none; font-weight: 600; width: 100%;
-        padding: 12px;
+        background: #138808 !important; color: white !important;
+        border-radius: 8px; border: none; font-weight: 600; width: 100%; padding: 12px;
     }
-    .stButton>button:hover { background: #0f6b06 !important; }
 
-    /* 7. HIDE JUNK */
+    /* 6. HIDE JUNK */
     #MainMenu, header, footer { visibility: hidden; }
     .block-container { padding-top: 0rem; padding-bottom: 5rem; }
     
-    /* 8. TABS */
-    .stTabs [data-baseweb="tab-list"] { background: white; padding: 5px; border-radius: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
+    /* 7. TABS */
+    .stTabs [data-baseweb="tab-list"] { background: white; padding: 5px; border-radius: 10px; }
     .stTabs [data-baseweb="tab"] { border-radius: 8px; border: none; font-size: 14px; flex: 1; color: #333; }
     .stTabs [aria-selected="true"] { background: #138808 !important; color: white !important; }
     </style>
@@ -132,19 +102,7 @@ def get_ai_response(prompt, image=None):
     try:
         model = genai.GenerativeModel(model_name)
         return model.generate_content([prompt, image] if image else prompt).text
-    except Exception as e: return f"⚠️ Server Busy. Try again. ({str(e)})"
-
-def get_user_city():
-    """Auto-detect user city from IP"""
-    try:
-        response = requests.get("https://ipinfo.io/json")
-        data = response.json()
-        city = data.get("city", "Delhi")
-        # Fix for Cloud Servers: If it says "The Dalles" or "Mountain View", default to India
-        if city in ["The Dalles", "Mountain View", "Ashburn"]:
-            return "New Delhi"
-        return city
-    except: return "New Delhi"
+    except Exception as e: return f"⚠️ Server Busy. ({str(e)})"
 
 def get_weather(city):
     if not WEATHER_API_KEY: return "Sunny", 32
@@ -175,21 +133,13 @@ def fetch_translated_news(language):
 # --- 5. MAIN APP ---
 def main():
     if "show_camera" not in st.session_state: st.session_state.show_camera = False
-    
-    # Auto-Detect Location (Runs once)
-    if "user_city" not in st.session_state:
-        st.session_state.user_city = get_user_city()
 
     # --- HERO HEADER ---
     col1, col2 = st.columns([1, 5])
-    
     with col1:
-        # BIGGER LOGO (Size 130)
         try: st.image("logo.jpg", width=130) 
         except: st.write("🌾")
-        
     with col2:
-        # TITLE
         st.markdown("""
             <div style="padding-top: 25px;">
                 <h1 style='font-size:32px; margin:0; line-height:1; color:#138808 !important;'>GreenMitra AI</h1>
@@ -199,9 +149,9 @@ def main():
 
     st.write("---")
 
-    # --- SETTINGS ROW ---
+    # --- SETTINGS (LOCATION FIXED) ---
     with st.container():
-        c1, c2 = st.columns([2, 1])
+        c1, c2, c3 = st.columns([2, 1, 1])
         with c1: 
             lang_map = {
                 "English": "English", "Marathi (मराठी)": "Marathi", "Hindi (हिंदी)": "Hindi",
@@ -209,22 +159,24 @@ def main():
                 "Gujarati (ગુજરાતી)": "Gujarati", "Punjabi (ਪੰਜਾਬੀ)": "Punjabi", "Odia (ଓଡ଼ିଆ)": "Odia",
                 "Bengali (বাংলা)": "Bengali", "Malayalam (മലയാളം)": "Malayalam"
             }
-            # The CSS above strictly forces this to be WHITE
             sel_lang = st.selectbox("Select Language / भाषा", list(lang_map.keys()))
             target_lang = lang_map[sel_lang]
-        with c2: 
-            # WEATHER FOR DETECTED CITY
-            city = st.session_state.user_city
-            w_cond, w_temp = get_weather(city)
-            st.markdown(f"<div style='background:#e9f7ef; padding:8px; border-radius:8px; text-align:center; margin-top:28px;'><small>📍 {city}</small><br><b>{w_temp}°C</b> {w_cond}</div>", unsafe_allow_html=True)
+            
+        with c2:
+            # MANUAL CITY INPUT (Best for accuracy)
+            user_city = st.text_input("Village / गाव", "Kolhapur")
+            
+        with c3: 
+            # WEATHER
+            w_cond, w_temp = get_weather(user_city)
+            st.markdown(f"<div style='background:#e9f7ef; padding:8px; border-radius:8px; text-align:center; margin-top:28px;'><b>{w_temp}°C</b><br>{w_cond}</div>", unsafe_allow_html=True)
 
     # --- TABS ---
-    tabs = st.tabs(["🩺 Doctor", "📅 AI Planner", "📰 Yojana", "💬 Chat"])
+    tabs = st.tabs(["🩺 Doctor", "📅 Planner", "📰 Yojana", "💬 Chat"])
 
     # === TAB 1: CROP DOCTOR ===
     with tabs[0]:
-        st.markdown(f"### 🩺 Crop Health Check ({target_lang})")
-        
+        st.markdown(f"### 🩺 Crop Health ({target_lang})")
         c1, c2 = st.columns([1, 1])
         with c1:
             st.info("Option 1: Upload")
@@ -255,9 +207,8 @@ def main():
     # === TAB 2: AI PLANNER ===
     with tabs[1]:
         st.markdown(f"### 📅 AI Manager ({target_lang})")
-        
         c1, c2 = st.columns(2)
-        with c1: crop_name = st.text_input("Crop", "Tomato")
+        with c1: crop_name = st.text_input("Crop", "Sugarcane")
         with c2: sow_date = st.date_input("Sowing Date", datetime.date.today())
         
         days_old = (datetime.date.today() - sow_date).days
