@@ -159,7 +159,7 @@ def main():
     with col1:
         # Display Logo (Small Size)
         try:
-            st.image("logo.jpg", width=85) # Fixed small width
+            st.image("logo.png", width=85) # Fixed small width
         except:
             st.warning("No logo found")
             
