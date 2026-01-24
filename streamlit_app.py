@@ -24,49 +24,57 @@ if "WEATHER_API_KEY" in st.secrets:
 else:
     WEATHER_API_KEY = ""
 
-# --- 3. AGGRESSIVE CSS FIXES ---
+# --- 3. CSS STYLING (THE NUCLEAR FIX) ---
 st.markdown("""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap');
     
-    /* 1. FORCE LIGHT THEME BACKGROUND */
+    /* 1. RESET THEME */
     .stApp { 
         background-color: #f8fcf8; 
         font-family: 'Poppins', sans-serif; 
     }
     
-    /* 2. FORCE ALL TEXT TO BE BLACK */
-    h1, h2, h3, h4, h5, h6, p, div, span, label, li, .stMarkdown, .stText { 
+    /* 2. TEXT COLOR FIX */
+    h1, h2, h3, h4, h5, h6, p, div, span, label, li, .stMarkdown { 
         color: #1a1a1a !important; 
     }
 
-    /* 3. CRITICAL DROPDOWN FIX (Dark Mode Override) */
-    /* The Box itself */
-    div[data-baseweb="select"] > div {
-        background-color: #ffffff !important;
-        color: #000000 !important;
-        border: 1px solid #cccccc !important;
+    /* --- 3. DROPDOWN MENU "NUCLEAR" FIX --- */
+    /* Target the Popup Container */
+    div[data-baseweb="popover"] {
+        background-color: white !important;
     }
-    /* The Text inside the box */
-    div[data-baseweb="select"] span {
-        color: #000000 !important;
-    }
-    /* The Dropdown Menu Popup */
+    /* Target the List inside the Popup */
     ul[data-baseweb="menu"] {
-        background-color: #ffffff !important;
+        background-color: white !important;
+        border: 1px solid #ccc !important;
     }
-    /* The Options in the Menu */
+    /* Target the Options */
     li[data-baseweb="option"] {
-        color: #000000 !important;
-        background-color: #ffffff !important;
+        background-color: white !important;
+        color: black !important;
+        font-weight: 600 !important;
     }
-    /* Hover Effect for Options */
+    /* Target Hover State */
     li[data-baseweb="option"]:hover {
         background-color: #e8f5e9 !important; /* Light Green */
-        color: #000000 !important;
+        color: black !important;
     }
-    
-    /* 4. NAVBAR STYLE HERO */
+    /* Target Selected State */
+    li[data-baseweb="option"][aria-selected="true"] {
+        background-color: #138808 !important;
+        color: white !important;
+    }
+    /* The Input Box itself */
+    div[data-baseweb="select"] > div {
+        background-color: white !important;
+        color: black !important;
+        border: 1px solid #ccc !important;
+    }
+    /* ------------------------------------- */
+
+    /* 4. NAVBAR & HERO */
     .hero-container {
         background: white;
         border-bottom: 4px solid #ff9933; /* Saffron Line */
@@ -76,25 +84,27 @@ st.markdown("""
         box-shadow: 0 4px 10px rgba(0,0,0,0.05);
     }
 
-    /* 5. CARDS & BUTTONS */
+    /* 5. CARDS */
     .feature-card {
         background: white; border-radius: 12px; padding: 20px;
         box-shadow: 0 2px 8px rgba(0,0,0,0.05); border: 1px solid #e0e0e0;
         margin-bottom: 15px;
     }
+    
+    /* 6. BUTTONS */
     .stButton>button {
-        background: #138808 !important; /* India Green */
+        background: #138808 !important;
         color: white !important;
         border-radius: 8px; border: none; font-weight: 600; width: 100%;
         padding: 12px;
     }
     .stButton>button:hover { background: #0f6b06 !important; }
 
-    /* 6. HIDE JUNK */
+    /* 7. HIDE STREAMLIT UI */
     #MainMenu, header, footer { visibility: hidden; }
     .block-container { padding-top: 0rem; padding-bottom: 5rem; }
     
-    /* 7. TAB STYLING */
+    /* 8. TABS */
     .stTabs [data-baseweb="tab-list"] { background: white; padding: 5px; border-radius: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
     .stTabs [data-baseweb="tab"] { border-radius: 8px; border: none; font-size: 14px; flex: 1; color: #333; }
     .stTabs [aria-selected="true"] { background: #138808 !important; color: white !important; }
@@ -136,22 +146,20 @@ def get_weather(city):
 def main():
     if "show_camera" not in st.session_state: st.session_state.show_camera = False
 
-    # --- HERO HEADER (LOGO SIZE FIXED) ---
-    # Changed column ratio to [1, 5] to give logo specific space
+    # --- HERO HEADER ---
     col1, col2 = st.columns([1, 5])
     
     with col1:
-        # LOGO IMAGE
-        # Make sure 'logo.jpg' is in your folder
-        try: st.image("logo.jpg", width=80) 
+        # LOGO (SIZE 120)
+        try: st.image("logo.jpg", width=120) 
         except: st.write("🌾")
         
     with col2:
-        # TITLE TEXT - Vertically aligned
+        # TITLE
         st.markdown("""
             <div style="padding-top: 25px;">
                 <h1 style='font-size:32px; margin:0; line-height:1; color:#138808 !important;'>GreenMitra AI</h1>
-                <p style='font-size:18px; margin:0; color:#555 !important;'>India's Smart Kisan Assistant</p>
+                <p style='font-size:14px; margin:0; color:#555 !important;'>India's Smart Kisan Assistant</p>
             </div>
         """, unsafe_allow_html=True)
 
@@ -167,7 +175,7 @@ def main():
                 "Gujarati (ગુજરાતી)": "Gujarati", "Punjabi (ਪੰਜਾਬੀ)": "Punjabi", "Odia (ଓଡ଼ିଆ)": "Odia",
                 "Bengali (বাংলা)": "Bengali", "Malayalam (മലയാളം)": "Malayalam"
             }
-            # The CSS above fixes the dropdown visibility!
+            # The CSS above strictly forces this to be WHITE
             sel_lang = st.selectbox("Select Language / भाषा", list(lang_map.keys()))
             target_lang = lang_map[sel_lang]
         with c2: 
