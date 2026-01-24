@@ -224,8 +224,6 @@ def main():
                         st.markdown(f"<div class='feature-card' style='border-left:5px solid #198754;'>{res}</div>", unsafe_allow_html=True)
 
     # === TAB 2: NEWS (TRANSLATED) ===
-   tabs = st.tabs(["📰 News & Schemes", "🌾 Crop Doctor", "💬 Chat", "📅 Plan"])
-
     # === TAB 1: NEWS & SCHEMES (THE NEW UPDATE) ===
     with tabs[0]:
         # SECTION 1: PERMANENT SCHEMES (Static Grid)
