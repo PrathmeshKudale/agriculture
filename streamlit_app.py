@@ -24,46 +24,49 @@ if "WEATHER_API_KEY" in st.secrets:
 else:
     WEATHER_API_KEY = ""
 
-# --- 3. CSS STYLING (FIXED DROPDOWN & COLORS) ---
+# --- 3. AGGRESSIVE CSS FIXES ---
 st.markdown("""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap');
     
-    /* GLOBAL RESET */
-    .stApp { background-color: #f8fcf8; font-family: 'Poppins', sans-serif; }
+    /* 1. FORCE LIGHT THEME BACKGROUND */
+    .stApp { 
+        background-color: #f8fcf8; 
+        font-family: 'Poppins', sans-serif; 
+    }
     
-    /* FORCE TEXT COLOR BLACK */
-    h1, h2, h3, h4, h5, h6, p, div, span, label, li, .stMarkdown { 
+    /* 2. FORCE ALL TEXT TO BE BLACK */
+    h1, h2, h3, h4, h5, h6, p, div, span, label, li, .stMarkdown, .stText { 
         color: #1a1a1a !important; 
     }
 
-    /* --- DROPDOWN MENU FIX (CRITICAL) --- */
-    /* This forces the popup menu to be White with Black Text */
-    div[role="listbox"] ul {
-        background-color: white !important;
+    /* 3. CRITICAL DROPDOWN FIX (Dark Mode Override) */
+    /* The Box itself */
+    div[data-baseweb="select"] > div {
+        background-color: #ffffff !important;
+        color: #000000 !important;
+        border: 1px solid #cccccc !important;
     }
-    div[role="listbox"] li {
-        color: black !important;
-        background-color: white !important;
+    /* The Text inside the box */
+    div[data-baseweb="select"] span {
+        color: #000000 !important;
     }
-    div[role="listbox"] li:hover {
-        background-color: #e0f2f1 !important; /* Light Green on Hover */
-        color: #0f5132 !important;
+    /* The Dropdown Menu Popup */
+    ul[data-baseweb="menu"] {
+        background-color: #ffffff !important;
     }
-    /* Fix the box itself */
-    .stSelectbox > div > div {
-        background-color: white !important;
-        color: black !important;
-        border: 1px solid #ccc;
+    /* The Options in the Menu */
+    li[data-baseweb="option"] {
+        color: #000000 !important;
+        background-color: #ffffff !important;
     }
-
-    /* INPUT FIELDS */
-    .stTextInput>div>div>input {
-        color: black !important;
-        background-color: white !important;
+    /* Hover Effect for Options */
+    li[data-baseweb="option"]:hover {
+        background-color: #e8f5e9 !important; /* Light Green */
+        color: #000000 !important;
     }
-
-    /* NAVBAR HERO */
+    
+    /* 4. NAVBAR STYLE HERO */
     .hero-container {
         background: white;
         border-bottom: 4px solid #ff9933; /* Saffron Line */
@@ -73,14 +76,12 @@ st.markdown("""
         box-shadow: 0 4px 10px rgba(0,0,0,0.05);
     }
 
-    /* CARDS */
+    /* 5. CARDS & BUTTONS */
     .feature-card {
         background: white; border-radius: 12px; padding: 20px;
         box-shadow: 0 2px 8px rgba(0,0,0,0.05); border: 1px solid #e0e0e0;
         margin-bottom: 15px;
     }
-    
-    /* BUTTONS */
     .stButton>button {
         background: #138808 !important; /* India Green */
         color: white !important;
@@ -89,14 +90,14 @@ st.markdown("""
     }
     .stButton>button:hover { background: #0f6b06 !important; }
 
-    /* TABS */
+    /* 6. HIDE JUNK */
+    #MainMenu, header, footer { visibility: hidden; }
+    .block-container { padding-top: 0rem; padding-bottom: 5rem; }
+    
+    /* 7. TAB STYLING */
     .stTabs [data-baseweb="tab-list"] { background: white; padding: 5px; border-radius: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
     .stTabs [data-baseweb="tab"] { border-radius: 8px; border: none; font-size: 14px; flex: 1; color: #333; }
     .stTabs [aria-selected="true"] { background: #138808 !important; color: white !important; }
-    
-    /* HIDE DEFAULT ELEMENTS */
-    #MainMenu, header, footer { visibility: hidden; }
-    .block-container { padding-top: 0rem; padding-bottom: 5rem; }
     </style>
 """, unsafe_allow_html=True)
 
@@ -135,19 +136,21 @@ def get_weather(city):
 def main():
     if "show_camera" not in st.session_state: st.session_state.show_camera = False
 
-    # --- HEADER WITH BIGGER LOGO ---
-    col1, col2 = st.columns([1, 6]) # Ratios adjusted for better layout
+    # --- HERO HEADER (LOGO SIZE FIXED) ---
+    # Changed column ratio to [1, 5] to give logo specific space
+    col1, col2 = st.columns([1, 5])
     
     with col1:
-        # LOGO SIZE FIXED HERE (Width 110)
-        try: st.image("logo.jpg", width=110)
+        # LOGO IMAGE
+        # Make sure 'logo.jpg' is in your folder
+        try: st.image("logo.jpg", width=120) 
         except: st.write("🌾")
         
     with col2:
-        # VERTICAL ALIGNMENT FOR TEXT
+        # TITLE TEXT - Vertically aligned
         st.markdown("""
-            <div style="padding-top: 15px;">
-                <h1 style='font-size:32px; margin:0; line-height:1.2; color:#138808 !important;'>GreenMitra AI</h1>
+            <div style="padding-top: 25px;">
+                <h1 style='font-size:32px; margin:0; line-height:1; color:#138808 !important;'>GreenMitra AI</h1>
                 <p style='font-size:14px; margin:0; color:#555 !important;'>India's Smart Kisan Assistant</p>
             </div>
         """, unsafe_allow_html=True)
