@@ -29,8 +29,12 @@ st.markdown("""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap');
     
-    /* 1. RESET THEME */
-    .stApp { background-color: #f8fcf8; font-family: 'Poppins', sans-serif; }
+    /* 1. RESET THEME & BACKGROUND COLOR CHANGE */
+    .stApp { 
+        /* Changed from white to a soft, natural mint green */
+        background-color: #f1f8e9 !important; 
+        font-family: 'Poppins', sans-serif; 
+    }
     
     /* 2. FORCE BLACK TEXT */
     h1, h2, h3, h4, h5, h6, p, div, span, label, li, .stMarkdown { color: #1a1a1a !important; }
@@ -51,7 +55,7 @@ st.markdown("""
 
     /* 4. NAVBAR & HERO */
     .hero-container {
-        background: white;
+        background: white; /* Keep navbar white for contrast */
         border-bottom: 4px solid #ff9933;
         padding: 20px;
         margin: -1rem -1rem 20px -1rem;
@@ -61,7 +65,8 @@ st.markdown("""
 
     /* 5. CARDS & BUTTONS */
     .feature-card {
-        background: white; border-radius: 12px; padding: 20px;
+        background: white; /* Cards remain white to pop against the new background */
+        border-radius: 12px; padding: 20px;
         box-shadow: 0 2px 8px rgba(0,0,0,0.05); border: 1px solid #e0e0e0;
         margin-bottom: 15px;
     }
@@ -171,7 +176,7 @@ def main():
         with c3: 
             # WEATHER
             w_cond, w_temp = get_weather(user_city)
-            st.markdown(f"<div style='background:#e9f7ef; padding:8px; border-radius:8px; text-align:center; margin-top:28px;'><b>{w_temp}°C</b><br>{w_cond}</div>", unsafe_allow_html=True)
+            st.markdown(f"<div style='background:white; padding:8px; border-radius:8px; text-align:center; margin-top:28px;'><b>{w_temp}°C</b><br>{w_cond}</div>", unsafe_allow_html=True)
 
     # --- TABS ---
     tabs = st.tabs(["🩺 Doctor", "📅 Planner", "📰 Yojana", "💬 Chat"])
