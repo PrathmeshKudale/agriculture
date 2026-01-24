@@ -7,7 +7,7 @@ from streamlit.components.v1 import html
 
 # --- 1. CONFIGURATION ---
 st.set_page_config(
-    page_title="GreenMitra",
+    page_title="GreenMitra App",
     page_icon="🌾",
     layout="wide",
     initial_sidebar_state="collapsed"
@@ -25,50 +25,81 @@ if "WEATHER_API_KEY" in st.secrets:
 else:
     WEATHER_API_KEY = ""
 
-# --- 3. CSS STYLING (Agrova Clean Look) ---
+# --- 3. "IONIC/EPIC" MOBILE CSS ( The Magic Part ) ---
 st.markdown("""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap');
 
-    .stApp { background-color: #f8fcf8; font-family: 'Poppins', sans-serif; color: #1f3a28; }
-    .block-container { padding-top: 2rem; padding-bottom: 5rem; }
+    /* GLOBAL THEME */
+    .stApp { background-color: #f4f9f4; font-family: 'Poppins', sans-serif; color: #1a1a1a; }
+    
+    /* HIDE DEFAULT HEADER/FOOTER */
+    #MainMenu, header, footer { visibility: hidden; }
+    .block-container { padding-top: 1rem; padding-bottom: 5rem; }
 
-    /* HERO SECTION */
+    /* 📱 MOBILE OPTIMIZATIONS */
+    @media (max-width: 600px) {
+        .hero-title { font-size: 1.8rem !important; }
+        .hero-subtitle { font-size: 0.9rem !important; }
+        .feature-card { padding: 15px !important; margin-bottom: 10px !important; }
+        .card-icon { width: 40px !important; height: 40px !important; font-size: 20px !important; }
+        .stButton>button { padding: 10px 20px !important; font-size: 14px !important; }
+    }
+
+    /* EPIC HERO SECTION */
     .hero-container {
-        background: linear-gradient(135deg, #134e28 0%, #2e7d32 100%);
-        border-radius: 20px; padding: 40px; color: white;
-        margin-bottom: 30px; box-shadow: 0 10px 30px rgba(46, 125, 50, 0.2);
+        background: linear-gradient(135deg, #0f5132 0%, #198754 100%);
+        border-radius: 24px; padding: 30px; color: white;
+        margin-bottom: 25px; box-shadow: 0 15px 30px rgba(25, 135, 84, 0.25);
+        position: relative; overflow: hidden;
     }
-    .hero-title { font-size: 3rem; font-weight: 700; margin-bottom: 10px; }
+    .hero-title { font-size: 2.5rem; font-weight: 700; margin: 0; }
+    .hero-subtitle { opacity: 0.9; margin-top: 5px; font-weight: 300; }
     
-    /* CARDS */
+    /* GLASS/IONIC CARDS */
     .feature-card {
-        background: white; border-radius: 16px; padding: 25px;
-        box-shadow: 0 4px 20px rgba(0,0,0,0.05); border: 1px solid #e0eadd;
-        transition: transform 0.3s ease; height: 100%;
+        background: white; border-radius: 20px; padding: 25px;
+        box-shadow: 0 8px 20px rgba(0,0,0,0.03); border: 1px solid #eef5ee;
+        transition: transform 0.2s; height: 100%;
     }
-    .feature-card:hover { transform: translateY(-5px); border-color: #81c784; }
+    .feature-card:hover { transform: translateY(-3px); border-color: #198754; }
 
-    /* BUTTONS & INPUTS */
+    /* ICONS */
+    .card-icon {
+        background: #e9f7ef; color: #198754; width: 50px; height: 50px;
+        border-radius: 12px; display: flex; align-items: center; justify-content: center;
+        font-size: 24px; margin-bottom: 15px;
+    }
+
+    /* TEXT COLORS (Fixed for Light Mode) */
+    h1, h2, h3, h4 { color: #0f5132 !important; }
+    p, span, li, label { color: #333333 !important; }
+    .stMarkdown p { color: #444 !important; }
+
+    /* PILL BUTTONS */
     .stButton>button {
-        background-color: #4CAF50 !important; color: white !important;
-        border-radius: 50px; padding: 12px 30px; font-weight: 600; width: 100%;
+        background: #198754 !important; color: white !important;
+        border-radius: 50px; border: none; font-weight: 600;
+        box-shadow: 0 4px 12px rgba(25, 135, 84, 0.3);
+        width: 100%; transition: all 0.2s;
     }
-    .stTextInput > div > div > input, .stSelectbox > div > div > div {
-        border-radius: 12px; border: 1px solid #dcdcdc; background-color: white; color: #333;
-    }
-    
-    /* TABS */
-    .stTabs [data-baseweb="tab-list"] { background-color: white; padding: 10px; border-radius: 50px; gap: 10px; }
-    .stTabs [data-baseweb="tab"] { border-radius: 30px; border: none; font-weight: 600; }
-    .stTabs [aria-selected="true"] { background-color: #2e7d32 !important; color: white !important; }
+    .stButton>button:hover { transform: scale(1.02); background: #146c43 !important; }
 
-    h1, h2, h3, h4 { color: #1b5e20 !important; }
-    #MainMenu, footer { visibility: hidden; }
+    /* TAB BAR (Like an App) */
+    .stTabs [data-baseweb="tab-list"] {
+        background: white; padding: 8px; border-radius: 50px;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.05); gap: 5px;
+    }
+    .stTabs [data-baseweb="tab"] {
+        border-radius: 40px; border: none; font-size: 14px; flex: 1;
+    }
+    .stTabs [aria-selected="true"] {
+        background: #198754 !important; color: white !important;
+    }
     </style>
 """, unsafe_allow_html=True)
 
-# --- 4. SMART LOGIC ---
+# --- 4. SMART LOGIC (FIXED LANGUAGES) ---
 def get_working_model():
     try:
         available_models = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
@@ -82,209 +113,169 @@ def get_ai_response(prompt, image=None):
     try:
         model = genai.GenerativeModel(model_name)
         return model.generate_content([prompt, image] if image else prompt).text
-    except Exception as e: return f"⚠️ Error: {str(e)}"
+    except Exception as e: return f"⚠️ System Error: {str(e)}"
 
 def get_weather(city):
-    if not WEATHER_API_KEY: return "Cloudy", 28
+    if not WEATHER_API_KEY: return "Sunny", 30
     try:
         url = f"http://api.openweathermap.org/data/2.5/weather?q={city}&appid={WEATHER_API_KEY}&units=metric"
         data = requests.get(url).json()
         return data['weather'][0]['main'], data['main']['temp']
     except: return "Clear", 25
 
-# --- NEW FUNCTION: TRANSLATED NEWS ---
 def fetch_translated_news(language):
     """
-    Fetches English news and uses AI to translate it into the selected Indian Language.
+    Forces AI to translate English news into the user's SELECTED language.
     """
     try:
-        # 1. Get Raw English News
         feed_url = "https://news.google.com/rss/search?q=India+Agriculture+Schemes+Government+announce+launch+when:30d&hl=en-IN&gl=IN&ceid=IN:en"
         feed = feedparser.parse(feed_url)
         
         headlines = []
         if feed.entries:
             for entry in feed.entries[:4]:
-                headlines.append(f"- {entry.title} (Source: {entry.source.title})")
+                headlines.append(f"- {entry.title}")
         
         raw_text = "\n".join(headlines)
 
-        # 2. If Language is English, show directly
-        if "English" in language:
-            formatted_news = []
-            for entry in feed.entries[:4]:
-                clean_title = entry.title.split(" - ")[0]
-                formatted_news.append(f"""
-                <div style="background:#f1f8e9; padding:15px; border-radius:10px; margin-bottom:10px; border-left:4px solid #4CAF50;">
-                    <strong style="color:#2e7d32;">{clean_title}</strong><br>
-                    <a href="{entry.link}" style="float:right; color:#4CAF50; text-decoration:none; font-weight:bold;">Read &rarr;</a>
-                </div>""")
-            return "".join(formatted_news)
-
-        # 3. If Indian Language, Ask AI to Translate
+        # AI TRANSLATOR AGENT
         prompt = f"""
-        Translate these agriculture news headlines into {language}.
-        Format them as a clean HTML list.
+        Act as a professional translator.
+        Translate these agricultural news headlines into {language} language.
+        Output MUST be a simple list of headlines.
         Headlines:
         {raw_text}
+        """
+        translated_text = get_ai_response(prompt)
         
-        Output format example:
-        <div style="background:#f1f8e9; padding:15px; border-radius:10px; margin-bottom:10px; border-left:4px solid #4CAF50;">
-            <strong style="color:#2e7d32;">[Translated Headline]</strong><br>
+        # Format HTML
+        return f"""
+        <div style="background:white; padding:20px; border-radius:15px; border:1px solid #eee;">
+            <h4 style="color:#198754; margin-top:0;">📢 Updates in {language}</h4>
+            <div style="color:#444; white-space: pre-line;">{translated_text}</div>
         </div>
         """
-        return get_ai_response(prompt)
+    except:
+        return "<div style='padding:15px; color:red;'>News Unavailable</div>"
 
-    except: pass
-    return "<div style='padding:20px; background:#fff3e0; color:#e65100;'>⚠️ Feed Unavailable.</div>"
-
-# --- 5. MAIN APP LAYOUT ---
+# --- 5. APP LAYOUT ---
 def main():
-    # --- HERO SECTION ---
+    # --- HEADER ---
     st.markdown("""
         <div class="hero-container">
-            <div style="max-width: 800px;">
-                <div class="hero-title">GreenMitra AI</div>
-                <div style="font-size:1.2rem;">Empowering Farmers in Every Language.</div>
-            </div>
+            <div class="hero-title">GreenMitra</div>
+            <div class="hero-subtitle">Next-Gen AI for Indian Farmers</div>
         </div>
     """, unsafe_allow_html=True)
 
-    # --- SETTINGS ROW ---
+    # --- SETTINGS (CARD STYLE) ---
     with st.container():
-        c1, c2, c3, c4 = st.columns([2, 2, 2, 1])
-        with c1: name = st.text_input("Name / नाव", "Kisan Bhai")
+        st.markdown('<div class="feature-card" style="padding:15px; margin-bottom:20px;">', unsafe_allow_html=True)
+        c1, c2, c3 = st.columns([1.5, 1.5, 1])
+        with c1: 
+            # FIXED LANGUAGE SELECTOR
+            lang_options = {
+                "English": "English",
+                "Marathi (मराठी)": "Marathi",
+                "Hindi (हिंदी)": "Hindi",
+                "Tamil (தமிழ்)": "Tamil",
+                "Telugu (తెలుగు)": "Telugu",
+                "Kannada (ಕನ್ನಡ)": "Kannada",
+                "Gujarati (ગુજરાતી)": "Gujarati",
+                "Punjabi (ਪੰਜਾਬੀ)": "Punjabi",
+                "Malayalam (മലയാളം)": "Malayalam",
+                "Odia (ଓଡ଼ିଆ)": "Odia"
+            }
+            selected_lang_label = st.selectbox("Select Language / भाषा", list(lang_options.keys()))
+            target_lang = lang_options[selected_lang_label] # This sends clean "Marathi", "Tamil" to AI
+
         with c2: city = st.text_input("Village / गाव", "Pune")
-        with c3: 
-            # SELECT LANGUAGE
-            lang = st.selectbox("Language / भाषा", [
-                "English", 
-                "Marathi (मराठी)", 
-                "Hindi (हिंदी)", 
-                "Tamil (தமிழ்)", 
-                "Telugu (తెలుగు)", 
-                "Urdu (اردو)", 
-                "Gujarati (ગુજરાતી)", 
-                "Kannada (ಕನ್ನಡ)", 
-                "Malayalam (മലയാളം)", 
-                "Punjabi (ਪੰਜਾਬੀ)", 
-                "Assamese (অসমীয়া)", 
-                "Odia (ଓଡ଼ିଆ)"
-            ])
-        with c4: 
+        with c3:
             w_cond, w_temp = get_weather(city)
-            st.markdown(f"""
-            <div style="text-align:center; background:white; padding:5px; border-radius:10px; border:1px solid #ddd;">
-                <h3 style="margin:0; color:#2e7d32;">{w_temp}°C</h3>
-                <small>{w_cond}</small>
-            </div>
-            """, unsafe_allow_html=True)
+            st.markdown(f"<div style='text-align:center; color:#198754;'><b>{w_temp}°C</b><br><small>{w_cond}</small></div>", unsafe_allow_html=True)
+        st.markdown('</div>', unsafe_allow_html=True)
 
-    st.write("---")
-
-    # --- TABS ---
-    tabs = st.tabs(["🌾 Crop Doctor", "📢 Yojana (Schemes)", "🤖 Kisan Chat", "📅 My Planner"])
+    # --- TABS (BOTTOM NAV STYLE) ---
+    tabs = st.tabs(["🌾 Doctor", "📰 News", "💬 Chat", "📅 Plan"])
 
     # === TAB 1: CROP DOCTOR ===
     with tabs[0]:
+        st.markdown(f"### 🩺 AI Crop Doctor ({target_lang})")
         c1, c2 = st.columns([1, 1])
         with c1:
-            st.markdown(f"""
+            st.markdown("""
             <div class="feature-card">
-                <h3>📸 AI Crop Diagnosis</h3>
-                <p>Selected Language: <b>{lang}</b></p>
-                <p>Upload a photo. The AI will write the report in your language.</p>
+                <div class="card-icon">📸</div>
+                <p>Upload a photo. I will identify the disease and give medicine in <b>%s</b>.</p>
             </div>
-            """, unsafe_allow_html=True)
-            mode = st.radio("Select Source", ["Upload Image", "Open Camera"], horizontal=True)
+            """ % target_lang, unsafe_allow_html=True)
+            mode = st.radio("Source", ["Upload", "Camera"], horizontal=True, label_visibility="collapsed")
             
         with c2:
-            st.markdown('<div class="feature-card">', unsafe_allow_html=True)
-            file = st.camera_input("Take Photo") if mode == "Open Camera" else st.file_uploader("Upload File", type=['jpg','png'])
-            
+            file = st.camera_input("Scan") if mode == "Camera" else st.file_uploader("Upload", type=['jpg','png'])
             if file:
-                st.image(file, width=200, caption="Uploaded Sample")
+                st.image(file, width=150)
                 if st.button("Analyze Now"):
-                    with st.spinner(f"Analyzing in {lang}..."):
+                    with st.spinner("Scanning..."):
                         img_bytes = file.getvalue()
-                        prompt = f"You are an expert Agronomist. Identify the disease, give remedies. Reply strictly in {lang} language."
+                        # STRICT LANGUAGE PROMPT
+                        prompt = f"You are an Agronomist. Identify crop disease. Suggest Organic and Chemical remedy. OUTPUT MUST BE IN {target_lang} LANGUAGE ONLY."
                         res = get_ai_response(prompt, {"mime_type": "image/jpeg", "data": img_bytes})
-                        st.markdown(f"<div style='background:#f1f8e9; padding:20px; border-radius:10px;'>{res}</div>", unsafe_allow_html=True)
-            st.markdown('</div>', unsafe_allow_html=True)
+                        st.markdown(f"<div class='feature-card' style='border-left:5px solid #198754;'>{res}</div>", unsafe_allow_html=True)
 
-    # === TAB 2: NEWS & SCHEMES (AUTO-TRANSLATED) ===
+    # === TAB 2: NEWS (TRANSLATED) ===
     with tabs[1]:
-        col1, col2 = st.columns([2, 1])
-        with col1:
-            st.markdown(f"### 📡 Live Updates ({lang})")
-            if st.button("🔴 Fetch & Translate News"):
-                with st.spinner("Fetching and Translating..."):
-                    news_html = fetch_translated_news(lang)
-                    st.markdown(news_html, unsafe_allow_html=True)
-            else:
-                st.info("Click the button to load news in your language.")
-
-        with col2:
-            st.markdown(f"### 🏛️ Famous Schemes ({lang})")
-            # We ask AI to generate the static list in the user's language
-            if st.button("Load Schemes List"):
-                with st.spinner("Loading..."):
-                    scheme_prompt = f"List 3 famous Indian government agriculture schemes (like PM-KISAN) with 1-line description in {lang}."
-                    res = get_ai_response(scheme_prompt)
-                    st.markdown(f"<div class='feature-card'>{res}</div>", unsafe_allow_html=True)
+        st.markdown(f"### 📢 Live Yojana ({target_lang})")
+        if st.button("🔄 Refresh News"):
+            news_html = fetch_translated_news(target_lang)
+            st.markdown(news_html, unsafe_allow_html=True)
+        else:
+            st.info(f"Click above to load news in {target_lang}.")
 
     # === TAB 3: CHAT (MULTI-LANGUAGE) ===
     with tabs[2]:
-        st.markdown('<div class="feature-card" style="min-height:500px;">', unsafe_allow_html=True)
-        st.subheader(f"💬 Chat ({lang})")
+        st.markdown(f"### 🤖 Kisan Sahayak ({target_lang})")
         
-        if "messages" not in st.session_state:
-            st.session_state.messages = [{"role": "assistant", "content": f"Namaste! I speak {lang}. Ask me anything."}]
+        # Clear chat if language changes to avoid confusion
+        if "last_lang" not in st.session_state or st.session_state.last_lang != target_lang:
+            st.session_state.messages = []
+            st.session_state.last_lang = target_lang
+
+        if not st.session_state.messages:
+             st.session_state.messages = [{"role": "assistant", "content": f"Namaste! Ask me anything in {target_lang}."}]
 
         for msg in st.session_state.messages:
             with st.chat_message(msg["role"]): st.markdown(msg["content"])
 
-        if prompt := st.chat_input("Ask here..."):
+        if prompt := st.chat_input("Ask about seeds, weather..."):
             st.session_state.messages.append({"role": "user", "content": prompt})
             with st.chat_message("user"): st.markdown(prompt)
 
             with st.chat_message("assistant"):
                 with st.spinner("Thinking..."):
-                    # CRITICAL: Force AI to use the selected language
-                    system_prompt = f"Act as an Indian Agriculture Expert. Reply strictly in {lang} language. User Question: {prompt}"
+                    # FORCE AI LANGUAGE
+                    system_prompt = f"Act as an Indian Agriculture Expert. Reply ONLY in {target_lang} language. Keep answers short. Question: {prompt}"
                     ai_reply = get_ai_response(system_prompt)
                     st.markdown(ai_reply)
                     st.session_state.messages.append({"role": "assistant", "content": ai_reply})
-        st.markdown('</div>', unsafe_allow_html=True)
 
     # === TAB 4: PLANNER ===
     with tabs[3]:
+        st.markdown("### 📅 Crop Calendar")
         c1, c2 = st.columns(2)
-        with c1:
-            st.markdown("""
-            <div class="feature-card">
-                <h3>📅 Crop Calendar</h3>
-                <p>Track your crop age.</p>
+        with c1: crop = st.selectbox("Select Crop", ["Wheat", "Rice", "Cotton", "Sugarcane"])
+        with c2: date = st.date_input("Sowing Date", datetime.date.today())
+        
+        days = (datetime.date.today() - date).days
+        st.markdown(f"""
+        <div class="feature-card" style="text-align:center; padding:30px;">
+            <h1 style="color:#198754; font-size:4rem; margin:0;">{days}</h1>
+            <p>Days Old</p>
+            <div style="background:#e9f7ef; padding:10px; border-radius:10px; margin-top:10px;">
+                { "🌱 Germination Phase" if days < 20 else "🌿 Vegetative Phase" if days < 60 else "🌾 Harvest Phase" }
             </div>
-            """, unsafe_allow_html=True)
-        with c2:
-            st.markdown('<div class="feature-card">', unsafe_allow_html=True)
-            crop = st.selectbox("Select Crop", ["Wheat", "Rice", "Cotton", "Sugarcane"])
-            date = st.date_input("Sowing Date", datetime.date.today())
-            days = (datetime.date.today() - date).days
-            st.markdown(f"<h1 style='text-align:center; color:#2e7d32; font-size:60px; margin:0;'>{days}</h1>", unsafe_allow_html=True)
-            st.markdown("<p style='text-align:center;'>Days Old</p>", unsafe_allow_html=True)
-            if days < 20: st.info("🌱 Germination Phase")
-            elif days < 60: st.success("🌿 Vegetative Phase")
-            else: st.warning("🌾 Harvest Phase")
-            st.markdown('</div>', unsafe_allow_html=True)
-
-    # --- FOOTER ---
-    st.markdown("""
-    <div style="text-align:center; padding:30px; margin-top:50px; color:#888; border-top:1px solid #eee;">
-        <p>© 2026 GreenMitra AI • Empowering Rural India</p>
-    </div>
-    """, unsafe_allow_html=True)
+        </div>
+        """, unsafe_allow_html=True)
 
 if __name__ == "__main__":
     main()
