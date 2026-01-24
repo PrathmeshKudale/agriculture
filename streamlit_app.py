@@ -24,43 +24,54 @@ if "WEATHER_API_KEY" in st.secrets:
 else:
     WEATHER_API_KEY = ""
 
-# --- 3. "INDIAN GOVT STYLE" CSS (High Contrast) ---
+# --- 3. CSS STYLING (FIXED DROPDOWN & COLORS) ---
 st.markdown("""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap');
-    @import url('https://fonts.googleapis.com/css2?family=Hind:wght@400;600&display=swap'); /* Good for Indian Langs */
-
-    /* GLOBAL RESET & TEXT VISIBILITY FIX */
-    .stApp { background-color: #f8fcf8; font-family: 'Poppins', 'Hind', sans-serif; }
     
-    /* FORCE BLACK TEXT EVERYWHERE */
-    h1, h2, h3, h4, h5, h6, p, div, span, li, label, .stMarkdown { 
+    /* GLOBAL RESET */
+    .stApp { background-color: #f8fcf8; font-family: 'Poppins', sans-serif; }
+    
+    /* FORCE TEXT COLOR BLACK */
+    h1, h2, h3, h4, h5, h6, p, div, span, label, li, .stMarkdown { 
         color: #1a1a1a !important; 
     }
-    
-    /* INPUT FIELDS VISIBILITY */
-    .stTextInput>div>div>input, .stSelectbox>div>div>div {
-        color: #000 !important;
-        background-color: #fff !important;
+
+    /* --- DROPDOWN MENU FIX (CRITICAL) --- */
+    /* This forces the popup menu to be White with Black Text */
+    div[role="listbox"] ul {
+        background-color: white !important;
+    }
+    div[role="listbox"] li {
+        color: black !important;
+        background-color: white !important;
+    }
+    div[role="listbox"] li:hover {
+        background-color: #e0f2f1 !important; /* Light Green on Hover */
+        color: #0f5132 !important;
+    }
+    /* Fix the box itself */
+    .stSelectbox > div > div {
+        background-color: white !important;
+        color: black !important;
         border: 1px solid #ccc;
     }
 
-    /* HIDE DEFAULT HEADER */
-    #MainMenu, header, footer { visibility: hidden; }
-    .block-container { padding-top: 1rem; padding-bottom: 5rem; }
+    /* INPUT FIELDS */
+    .stTextInput>div>div>input {
+        color: black !important;
+        background-color: white !important;
+    }
 
-    /* NAVBAR STYLE HERO */
+    /* NAVBAR HERO */
     .hero-container {
         background: white;
         border-bottom: 4px solid #ff9933; /* Saffron Line */
-        padding: 15px 20px;
+        padding: 20px 20px;
         margin: -1rem -1rem 20px -1rem;
-        display: flex; align-items: center; justify-content: space-between;
+        display: flex; align-items: center;
         box-shadow: 0 4px 10px rgba(0,0,0,0.05);
     }
-    .hero-logo { width: 50px; margin-right: 15px; }
-    .hero-text h1 { font-size: 24px; margin: 0; color: #138808 !important; /* India Green */ }
-    .hero-text p { font-size: 12px; margin: 0; color: #666 !important; font-weight: 600; text-transform: uppercase; }
 
     /* CARDS */
     .feature-card {
@@ -74,23 +85,18 @@ st.markdown("""
         background: #138808 !important; /* India Green */
         color: white !important;
         border-radius: 8px; border: none; font-weight: 600; width: 100%;
-        padding: 12px; font-size: 16px;
+        padding: 12px;
     }
     .stButton>button:hover { background: #0f6b06 !important; }
 
-    /* TAB BAR */
+    /* TABS */
     .stTabs [data-baseweb="tab-list"] { background: white; padding: 5px; border-radius: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
     .stTabs [data-baseweb="tab"] { border-radius: 8px; border: none; font-size: 14px; flex: 1; color: #333; }
     .stTabs [aria-selected="true"] { background: #138808 !important; color: white !important; }
-
-    /* PLANNER TIMELINE STYLE */
-    .plan-step {
-        border-left: 3px solid #ff9933; margin-left: 10px; padding-left: 20px; padding-bottom: 20px; position: relative;
-    }
-    .plan-step::before {
-        content: "●"; color: #ff9933; font-size: 20px; position: absolute; left: -11px; top: -5px;
-    }
-    .plan-title { font-weight: bold; color: #138808 !important; }
+    
+    /* HIDE DEFAULT ELEMENTS */
+    #MainMenu, header, footer { visibility: hidden; }
+    .block-container { padding-top: 0rem; padding-bottom: 5rem; }
     </style>
 """, unsafe_allow_html=True)
 
@@ -127,35 +133,38 @@ def get_weather(city):
 
 # --- 5. MAIN APP ---
 def main():
-    # Camera State
     if "show_camera" not in st.session_state: st.session_state.show_camera = False
 
-    # --- NAVBAR HERO ---
-    col1, col2 = st.columns([1, 5])
+    # --- HEADER WITH BIGGER LOGO ---
+    col1, col2 = st.columns([1, 6]) # Ratios adjusted for better layout
+    
     with col1:
-        try: st.image("logo.jpg", width=60) # Looks for logo.jpg
+        # LOGO SIZE FIXED HERE (Width 110)
+        try: st.image("logo.jpg", width=110)
         except: st.write("🌾")
+        
     with col2:
+        # VERTICAL ALIGNMENT FOR TEXT
         st.markdown("""
-            <div>
-                <h1 style='font-size:22px; margin:0;'>GreenMitra AI</h1>
-                <p style='font-size:12px; margin:0;'>India's Smart Kisan Assistant</p>
+            <div style="padding-top: 15px;">
+                <h1 style='font-size:32px; margin:0; line-height:1.2; color:#138808 !important;'>GreenMitra AI</h1>
+                <p style='font-size:14px; margin:0; color:#555 !important;'>India's Smart Kisan Assistant</p>
             </div>
         """, unsafe_allow_html=True)
 
     st.write("---")
 
-    # --- SETTINGS (Card) ---
+    # --- SETTINGS ROW ---
     with st.container():
         c1, c2 = st.columns([2, 1])
         with c1: 
-            # STRICT LANGUAGE MAP
             lang_map = {
                 "English": "English", "Marathi (मराठी)": "Marathi", "Hindi (हिंदी)": "Hindi",
                 "Tamil (தமிழ்)": "Tamil", "Telugu (తెలుగు)": "Telugu", "Kannada (ಕನ್ನಡ)": "Kannada",
                 "Gujarati (ગુજરાતી)": "Gujarati", "Punjabi (ਪੰਜਾਬੀ)": "Punjabi", "Odia (ଓଡ଼ିଆ)": "Odia",
                 "Bengali (বাংলা)": "Bengali", "Malayalam (മലയാളം)": "Malayalam"
             }
+            # The CSS above fixes the dropdown visibility!
             sel_lang = st.selectbox("Select Language / भाषा", list(lang_map.keys()))
             target_lang = lang_map[sel_lang]
         with c2: 
@@ -196,18 +205,17 @@ def main():
                     st.success("Report Ready")
                     st.markdown(f"<div class='feature-card'>{res}</div>", unsafe_allow_html=True)
 
-    # === TAB 2: AI SMART PLANNER (NEW & UPGRADED) ===
+    # === TAB 2: AI SMART PLANNER ===
     with tabs[1]:
         st.markdown(f"### 📅 Smart Crop Manager ({target_lang})")
         st.markdown(f"Use AI to generate a schedule for your farm.")
         
         c1, c2 = st.columns(2)
-        with c1: crop_name = st.text_input("Crop Name (e.g., Rice, Tomato)", "Tomato")
+        with c1: crop_name = st.text_input("Crop Name (e.g., Rice)", "Tomato")
         with c2: sow_date = st.date_input("Sowing Date", datetime.date.today())
         
         days_old = (datetime.date.today() - sow_date).days
         
-        # Display Crop Age
         st.markdown(f"""
         <div style="background:#fff3e0; padding:15px; border-radius:10px; border-left:5px solid #ff9933; margin:10px 0;">
             <h4 style="margin:0;">🌱 Crop Age: {days_old} Days</h4>
@@ -216,20 +224,11 @@ def main():
 
         if st.button("🤖 Generate Weekly Schedule"):
             with st.spinner(f"Creating Schedule in {target_lang}..."):
-                # AI PROMPT FOR PLANNER
                 prompt = f"""
-                Act as an Expert Farm Manager.
-                Crop: {crop_name}.
-                Age: {days_old} days.
-                Location: India.
+                Act as an Expert Farm Manager. Crop: {crop_name}. Age: {days_old} days.
                 Language: {target_lang}.
-                
-                Task: Create a detailed schedule for THIS WEEK (Week {(days_old//7)+1}).
-                Include:
-                1. Fertilizer to apply now.
-                2. Water requirement (High/Low).
-                3. Disease to watch out for at this stage.
-                
+                Task: Create a detailed schedule for THIS WEEK.
+                Include Fertilizer, Water, and Disease prevention steps.
                 Format as a clean list with emojis.
                 """
                 schedule = get_ai_response(prompt)
@@ -270,7 +269,6 @@ def main():
             
             with st.chat_message("assistant"):
                 with st.spinner("..."):
-                    # STRICT LANGUAGE ENFORCEMENT
                     sys_prompt = f"You are an Indian Farming Expert. You MUST reply in {target_lang} language ONLY. Question: {prompt}"
                     reply = get_ai_response(sys_prompt)
                     st.markdown(reply)
