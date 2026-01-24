@@ -145,33 +145,36 @@ def fetch_translated_news(language):
     except: return "<div style='padding:15px; color:red;'>News Unavailable</div>"
 
 # --- 5. APP LAYOUT ---
+# --- 5. APP LAYOUT ---
 def main():
     # Initialize Camera State
     if "show_camera" not in st.session_state:
         st.session_state.show_camera = False
 
-    # --- HERO SECTION WITH LOGO ---
-    # We use columns to center the logo perfectly
-    c1, c2, c3 = st.columns([1, 1, 1])
+    # --- HERO SECTION (NAVBAR STYLE) ---
+    # We use a 2-column layout: Small Logo (left) + Title (right)
     
-    with c2:
-        # This displays your logo. Make sure 'logo.jpg' is in the folder!
+    col1, col2 = st.columns([1, 4]) # col1 is small (logo), col2 is big (text)
+    
+    with col1:
+        # Display Logo (Small Size)
         try:
-            st.image("logo.png", use_container_width=True) 
+            st.image("logo.jpg", width=85) # Fixed small width
         except:
-            # Fallback if image is missing
-            st.warning("⚠️ Please save your image as 'logo.jpg' in the app folder.")
-
-    st.markdown("""
-        <div class="hero-container">
-            <div style="text-align:center;">
-                <div class="hero-title">GreenMitra</div>
-                <div class="hero-subtitle">Farmers' Digital News & Assistant</div>
+            st.warning("No logo found")
+            
+    with col2:
+        # Display Title next to logo
+        st.markdown("""
+            <div style="margin-top: 10px;">
+                <h1 style="margin:0; font-size: 28px; color:#0f5132;">GreenMitra</h1>
+                <p style="margin:0; font-size: 14px; color:#555;">Farmer's Assistant</p>
             </div>
-        </div>
-    """, unsafe_allow_html=True)
+        """, unsafe_allow_html=True)
 
+    # --- SETTINGS ROW ---
     with st.container():
+        st.markdown("<br>", unsafe_allow_html=True) # Tiny spacer
         c1, c2 = st.columns([2, 1])
         with c1: 
             lang_options = {"English": "English", "Marathi (मराठी)": "Marathi", "Hindi (हिंदी)": "Hindi", "Tamil (தமிழ்)": "Tamil", "Telugu (తెలుగు)": "Telugu", "Kannada (ಕನ್ನಡ)": "Kannada", "Gujarati (ગુજરાતી)": "Gujarati", "Punjabi (ਪੰਜਾਬੀ)": "Punjabi", "Odia (ଓଡ଼ିଆ)": "Odia"}
@@ -179,7 +182,7 @@ def main():
             target_lang = lang_options[selected_lang_label]
         with c2: 
             w_cond, w_temp = get_weather("Pune")
-            st.markdown(f"<div style='background:white; padding:10px; border-radius:10px; text-align:center; box-shadow:0 2px 10px rgba(0,0,0,0.05);'><b>{w_temp}°C</b> {w_cond}</div>", unsafe_allow_html=True)
+            st.markdown(f"<div style='background:white; padding:10px; border-radius:10px; text-align:center; box-shadow:0 2px 10px rgba(0,0,0,0.05); margin-top:28px;'><b>{w_temp}°C</b> {w_cond}</div>", unsafe_allow_html=True)
 
     # --- TABS ---
     tabs = st.tabs(["🌾 Crop Doctor", "📰 News & Schemes", "💬 Chat", "📅 Plan"])
@@ -193,7 +196,7 @@ def main():
         with col1:
             st.markdown(f"""
             <div class="feature-card">
-                <p><b>Option 1:</b> Upload a photo from your gallery.</p>
+                <p><b>Option 1:</b> Upload a photo.</p>
             </div>
             """, unsafe_allow_html=True)
             uploaded_file = st.file_uploader("Upload Image", type=['jpg','png'])
@@ -201,7 +204,7 @@ def main():
         with col2:
             st.markdown(f"""
             <div class="feature-card">
-                <p><b>Option 2:</b> Use Camera (Live)</p>
+                <p><b>Option 2:</b> Live Camera</p>
             </div>
             """, unsafe_allow_html=True)
             
