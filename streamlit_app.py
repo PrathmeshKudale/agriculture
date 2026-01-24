@@ -146,34 +146,28 @@ def main():
             w_cond, w_temp = get_weather("Pune")
             st.markdown(f"<div style='background:white; padding:10px; border-radius:10px; text-align:center; box-shadow:0 2px 10px rgba(0,0,0,0.05);'><b>{w_temp}°C</b> {w_cond}</div>", unsafe_allow_html=True)
 
-    # --- TABS REORDERED: DOCTOR FIRST ---
+    # --- TABS ---
     tabs = st.tabs(["🌾 Crop Doctor", "📰 News & Schemes", "💬 Chat", "📅 Plan"])
 
-    # === TAB 1: CROP DOCTOR (AUTO OPEN CAMERA) ===
+    # === TAB 1: CROP DOCTOR (PERMISSION FIX) ===
     with tabs[0]:
         st.markdown(f"### 🩺 AI Doctor ({target_lang})")
         
-        # NOTE: WE REMOVED THE RADIO BUTTON. IT IS NOW ALWAYS CAMERA FIRST.
-        # Use columns to allow optional upload if camera fails
+        # --- THE FIX: DEFAULT TO "UPLOAD" (NO CAMERA PERMISSION ON LOAD) ---
+        mode = st.radio("Select Input / निवडा", ["📁 Upload Image", "📸 Open Camera"], index=0, horizontal=True)
         
-        col1, col2 = st.columns([1, 1])
-        with col1:
-            st.info(f"📸 Camera Active. Point at crop.")
-            # CAMERA IS OPEN BY DEFAULT
-            file = st.camera_input("Scan Crop")
-        
-        with col2:
-            st.markdown("Or upload a file:")
-            uploaded_file = st.file_uploader("Upload Image", type=['jpg','png'])
+        file = None
+        if mode == "📸 Open Camera":
+            st.info("Tap 'Allow' if asked for permission.")
+            file = st.camera_input("Take Photo")
+        else:
+            file = st.file_uploader("Select Image File", type=['jpg','png'])
             
-        # Logic to handle both inputs
-        final_file = file if file else uploaded_file
-        
-        if final_file:
-            st.image(final_file, width=150)
+        if file:
+            st.image(file, width=150)
             if st.button("Diagnose Crop"):
                 with st.spinner("Analyzing..."):
-                    img_bytes = final_file.getvalue()
+                    img_bytes = file.getvalue()
                     prompt = f"Identify crop disease. Suggest remedy. OUTPUT IN {target_lang}."
                     res = get_ai_response(prompt, {"mime_type": "image/jpeg", "data": img_bytes})
                     st.success("Analysis Complete")
