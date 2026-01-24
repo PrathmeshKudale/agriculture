@@ -143,7 +143,7 @@ def main():
     with col1:
         # LOGO IMAGE
         # Make sure 'logo.jpg' is in your folder
-        try: st.image("logo.jpg", width=120) 
+        try: st.image("logo.jpg", width=220) 
         except: st.write("🌾")
         
     with col2:
@@ -151,7 +151,7 @@ def main():
         st.markdown("""
             <div style="padding-top: 25px;">
                 <h1 style='font-size:32px; margin:0; line-height:1; color:#138808 !important;'>GreenMitra AI</h1>
-                <p style='font-size:14px; margin:0; color:#555 !important;'>India's Smart Kisan Assistant</p>
+                <p style='font-size:18px; margin:0; color:#555 !important;'>India's Smart Kisan Assistant</p>
             </div>
         """, unsafe_allow_html=True)
 
