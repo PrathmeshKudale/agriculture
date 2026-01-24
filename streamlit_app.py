@@ -224,13 +224,35 @@ def main():
                         st.markdown(f"<div class='feature-card' style='border-left:5px solid #198754;'>{res}</div>", unsafe_allow_html=True)
 
     # === TAB 2: NEWS (TRANSLATED) ===
-    with tabs[1]:
-        st.markdown(f"### 📢 Live Yojana ({target_lang})")
-        if st.button("🔄 Refresh News"):
-            news_html = fetch_translated_news(target_lang)
-            st.markdown(news_html, unsafe_allow_html=True)
+   tabs = st.tabs(["📰 News & Schemes", "🌾 Crop Doctor", "💬 Chat", "📅 Plan"])
+
+    # === TAB 1: NEWS & SCHEMES (THE NEW UPDATE) ===
+    with tabs[0]:
+        # SECTION 1: PERMANENT SCHEMES (Static Grid)
+        st.markdown("### 🏛️ Major Government Schemes (Permanent)")
+        
+        # Grid Layout for Permanent Schemes
+        cols = st.columns(3)
+        for i, scheme in enumerate(PERMANENT_SCHEMES):
+            with cols[i % 3]:
+                st.markdown(f"""
+                <div class="scheme-card">
+                    <div class="scheme-title">{scheme['name']}</div>
+                    <div class="scheme-desc">{scheme['desc']}</div>
+                    <a href="{scheme['link']}" style="font-size:12px; color:#198754; font-weight:bold;">Official Site</a>
+                </div>
+                """, unsafe_allow_html=True)
+        
+        st.markdown("---")
+        
+        # SECTION 2: LIVE NEWS FEED
+        st.markdown(f"### 🔴 Trending Agriculture News ({target_lang})")
+        if st.button("🔄 Refresh Live News"):
+            with st.spinner(f"Fetching news from Times of India, PIB, and translating to {target_lang}..."):
+                news_html = fetch_translated_news(target_lang)
+                st.markdown(news_html, unsafe_allow_html=True)
         else:
-            st.info(f"Click above to load news in {target_lang}.")
+            st.info("Click 'Refresh' to see the latest news headlines.")
 
     # === TAB 3: CHAT (MULTI-LANGUAGE) ===
     with tabs[2]:
