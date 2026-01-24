@@ -134,13 +134,17 @@ def get_ai_response(prompt, image=None):
         return model.generate_content([prompt, image] if image else prompt).text
     except Exception as e: return f"⚠️ Server Busy. Try again. ({str(e)})"
 
-def get_weather(city):
-    if not WEATHER_API_KEY: return "Sunny", 32
+def get_user_city():
+    """
+    Tries to auto-detect the city based on IP address.
+    Defaults to 'Delhi' if detection fails.
+    """
     try:
-        url = f"http://api.openweathermap.org/data/2.5/weather?q={city}&appid={WEATHER_API_KEY}&units=metric"
-        data = requests.get(url).json()
-        return data['weather'][0]['main'], data['main']['temp']
-    except: return "Clear", 28
+        response = requests.get("https://ipinfo.io/json")
+        data = response.json()
+        return data.get("city", "Delhi")
+    except:
+        return "Delhi"
 
 # --- 5. MAIN APP ---
 def main():
@@ -166,6 +170,7 @@ def main():
     st.write("---")
 
     # --- SETTINGS ROW ---
+  # --- SETTINGS ROW ---
     with st.container():
         c1, c2 = st.columns([2, 1])
         with c1: 
@@ -175,13 +180,22 @@ def main():
                 "Gujarati (ગુજરાતી)": "Gujarati", "Punjabi (ਪੰਜਾਬੀ)": "Punjabi", "Odia (ଓଡ଼ିଆ)": "Odia",
                 "Bengali (বাংলা)": "Bengali", "Malayalam (മലയാളം)": "Malayalam"
             }
-            # The CSS above strictly forces this to be WHITE
             sel_lang = st.selectbox("Select Language / भाषा", list(lang_map.keys()))
             target_lang = lang_map[sel_lang]
         with c2: 
-            w_cond, w_temp = get_weather("Pune")
-            st.markdown(f"<div style='background:#e9f7ef; padding:8px; border-radius:8px; text-align:center; margin-top:28px;'><b>{w_temp}°C</b><br>{w_cond}</div>", unsafe_allow_html=True)
-
+            # --- AUTO-DETECT LOCATION CHANGE ---
+            if "user_city" not in st.session_state:
+                st.session_state.user_city = get_user_city() # Detects city ONCE when app loads
+            
+            # Fetch weather for the DETECTED city, not "Pune"
+            w_cond, w_temp = get_weather(st.session_state.user_city)
+            
+            st.markdown(f"""
+            <div style='background:#e9f7ef; padding:8px; border-radius:8px; text-align:center; margin-top:28px;'>
+                <small style="color:#555;">📍 {st.session_state.user_city}</small><br>
+                <b>{w_temp}°C</b> {w_cond}
+            </div>
+            """, unsafe_allow_html=True)
     # --- TABS ---
     tabs = st.tabs(["🩺 Doctor", "📅 AI Planner", "📰 Yojana", "💬 Chat"])
 
