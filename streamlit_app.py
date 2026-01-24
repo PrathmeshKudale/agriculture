@@ -146,9 +146,21 @@ def fetch_translated_news(language):
 
 # --- 5. APP LAYOUT ---
 def main():
-    # Initialize Camera State (Must be False on load)
+    # Initialize Camera State
     if "show_camera" not in st.session_state:
         st.session_state.show_camera = False
+
+    # --- HERO SECTION WITH LOGO ---
+    # We use columns to center the logo perfectly
+    c1, c2, c3 = st.columns([1, 1, 1])
+    
+    with c2:
+        # This displays your logo. Make sure 'logo.jpg' is in the folder!
+        try:
+            st.image("logo.png", use_container_width=True) 
+        except:
+            # Fallback if image is missing
+            st.warning("⚠️ Please save your image as 'logo.jpg' in the app folder.")
 
     st.markdown("""
         <div class="hero-container">
@@ -172,12 +184,9 @@ def main():
     # --- TABS ---
     tabs = st.tabs(["🌾 Crop Doctor", "📰 News & Schemes", "💬 Chat", "📅 Plan"])
 
-    # === TAB 1: CROP DOCTOR (PERMISSION FIX) ===
+    # === TAB 1: CROP DOCTOR ===
     with tabs[0]:
         st.markdown(f"### 🩺 AI Doctor ({target_lang})")
-        
-        # --- THE FIX: CAMERA HIDDEN BY DEFAULT ---
-        # We use session state to control visibility
         
         col1, col2 = st.columns([1, 1])
         
@@ -196,7 +205,6 @@ def main():
             </div>
             """, unsafe_allow_html=True)
             
-            # Logic: If camera is OFF, show "Start" button. If ON, show Widget.
             if not st.session_state.show_camera:
                 if st.button("📸 Start Camera"):
                     st.session_state.show_camera = True
@@ -207,9 +215,8 @@ def main():
                     st.session_state.show_camera = False
                     st.rerun()
                 if img_file:
-                    uploaded_file = img_file # Treat camera image same as upload
+                    uploaded_file = img_file 
 
-        # Processing Logic
         if uploaded_file:
             st.image(uploaded_file, width=150)
             if st.button("Diagnose Crop Now"):
