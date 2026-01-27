@@ -25,16 +25,15 @@ if "WEATHER_API_KEY" in st.secrets:
 else:
     WEATHER_API_KEY = ""
 
-# --- 3. 3D & MODERN CSS ---
+# --- 3. MODERN CSS ---
 st.markdown("""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap');
     
-    /* 1. APP THEME */
     .stApp { background-color: #f1f8e9 !important; font-family: 'Poppins', sans-serif; }
     h1, h2, h3, h4, h5, h6, p, div, span, label, li, .stMarkdown { color: #1a1a1a !important; }
 
-    /* 2. DROPDOWN FIX (White Box) */
+    /* DROPDOWN FIX */
     div[data-baseweb="popover"], div[data-baseweb="menu"], ul[data-baseweb="menu"] {
         background-color: #ffffff !important;
         border: 1px solid #cccccc !important;
@@ -43,54 +42,35 @@ st.markdown("""
     li[data-baseweb="option"]:hover { background-color: #e8f5e9 !important; }
     div[data-baseweb="select"] > div { background-color: #ffffff !important; color: #000000 !important; border: 1px solid #ccc !important; }
     
-    /* 3. MODERN CARDS (Glass Effect + 3D Shadow) */
-    .hero-container { background: white; border-bottom: 4px solid #ff9933; padding: 20px; display: flex; align-items: center; box-shadow: 0 4px 10px rgba(0,0,0,0.05); }
-    
+    /* CARDS & ANIMATIONS */
+    .hero-container { background: white; border-bottom: 4px solid #ff9933; padding: 20px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); }
     .feature-card {
-        background: white; 
-        border-radius: 16px; 
-        padding: 20px; 
-        box-shadow: 0 10px 20px rgba(0,0,0,0.05), 0 6px 6px rgba(0,0,0,0.05); /* 3D Lift */
-        border: 1px solid #ffffff;
-        margin-bottom: 15px;
-        transition: transform 0.3s ease;
+        background: white; border-radius: 16px; padding: 20px; 
+        box-shadow: 0 4px 6px rgba(0,0,0,0.05); border: 1px solid #ffffff; margin-bottom: 15px;
     }
-    .feature-card:hover { transform: translateY(-3px); } /* Slight lift on hover */
-
-    /* 4. ANIMATED VOICE SECTION (Pulse Effect) */
+    .stButton>button {
+        background: linear-gradient(to right, #138808, #0f6b06) !important;
+        color: white !important; border-radius: 10px; border: none; font-weight: 600; width: 100%; padding: 12px;
+    }
+    
+    /* VOICE BOX ANIMATION */
     @keyframes pulse-green {
         0% { box-shadow: 0 0 0 0 rgba(19, 136, 8, 0.4); }
         70% { box-shadow: 0 0 0 15px rgba(19, 136, 8, 0); }
         100% { box-shadow: 0 0 0 0 rgba(19, 136, 8, 0); }
     }
-    
     .voice-box {
-        background: linear-gradient(135deg, #e8f5e9 0%, #ffffff 100%);
-        border: 2px solid #138808;
-        border-radius: 20px;
-        padding: 25px;
-        text-align: center;
-        animation: pulse-green 2s infinite;
-        margin-bottom: 20px;
+        background: white; border: 2px solid #138808; border-radius: 20px; padding: 20px;
+        text-align: center; animation: pulse-green 2s infinite; margin-bottom: 20px;
     }
-
-    /* 5. BUTTONS & TABS */
-    .stButton>button {
-        background: linear-gradient(to right, #138808, #0f6b06) !important; /* Gradient Green */
-        color: white !important;
-        border-radius: 10px; border: none; font-weight: 600; width: 100%; padding: 12px;
-        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-    }
-    .stTabs [data-baseweb="tab-list"] { background: white; padding: 8px; border-radius: 12px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
-    .stTabs [data-baseweb="tab"] { border-radius: 8px; border: none; font-size: 14px; flex: 1; color: #333; }
-    .stTabs [aria-selected="true"] { background: #138808 !important; color: white !important; }
     
     #MainMenu, header, footer { visibility: hidden; }
     .block-container { padding-top: 0rem; padding-bottom: 5rem; }
     </style>
 """, unsafe_allow_html=True)
 
-# --- 4. ADVANCED FUNCTIONS ---
+# --- 4. OPTIMIZED FUNCTIONS (With Caching to Fix Quota Issues) ---
+
 def speak_text(text, lang_code):
     js = f"""
     <script>
@@ -104,12 +84,10 @@ def speak_text(text, lang_code):
     st.components.v1.html(js, height=0, width=0)
 
 PERMANENT_SCHEMES = [
-    {"name": "PM-KISAN", "desc": "₹6,000/year income support for all landholding farmers.", "link": "https://pmkisan.gov.in/"},
-    {"name": "PMFBY (Insurance)", "desc": "Crop insurance scheme with lowest premium rates.", "link": "https://pmfby.gov.in/"},
-    {"name": "Kisan Credit Card", "desc": "Low interest loans (4%) for farming needs.", "link": "https://pib.gov.in/"},
-    {"name": "e-NAM Market", "desc": "Online trading platform to sell crops for better prices.", "link": "https://enam.gov.in/"},
-    {"name": "Soil Health Card", "desc": "Free soil testing reports to check fertilizer needs.", "link": "https://soilhealth.dac.gov.in/"},
-    {"name": "PM-KUSUM", "desc": "Subsidy for installing Solar Pumps on farms.", "link": "https://pmkusum.mnre.gov.in/"}
+    {"name": "PM-KISAN", "desc": "₹6000/Year", "link": "https://pmkisan.gov.in/"},
+    {"name": "PMFBY", "desc": "Crop Insurance", "link": "https://pmfby.gov.in/"},
+    {"name": "KCC Loan", "desc": "Kisan Credit Card", "link": "https://pib.gov.in/"},
+    {"name": "e-NAM", "desc": "Sell Online", "link": "https://enam.gov.in/"},
 ]
 
 def get_working_model():
@@ -122,25 +100,37 @@ def get_ai_response(prompt, image=None):
     try:
         model = genai.GenerativeModel(get_working_model())
         return model.generate_content([prompt, image] if image else prompt).text
-    except Exception as e: return f"⚠️ Server Busy. ({str(e)})"
+    except Exception as e: return f"⚠️ Server Limit Reached. Please wait 1 min. ({str(e)})"
 
-def get_weather(city):
-    if not WEATHER_API_KEY: return "Sunny", 32
-    try:
-        url = f"http://api.openweathermap.org/data/2.5/weather?q={city}&appid={WEATHER_API_KEY}&units=metric"
-        data = requests.get(url).json()
-        return data['weather'][0]['main'], data['main']['temp']
-    except: return "Clear", 28
-
+# CACHED NEWS: This prevents hitting the API limit on refresh
+@st.cache_data(ttl=3600) # Cache for 1 hour
 def fetch_translated_news(language):
     try:
         feed_url = "https://news.google.com/rss/search?q=India+Agriculture+Schemes&hl=en-IN&gl=IN&ceid=IN:en"
         feed = feedparser.parse(feed_url)
         headlines = [f"- {e.title}" for e in feed.entries[:4]]
         raw_text = "\n".join(headlines)
-        prompt = f"Translate these headlines to {language}. Format as HTML Cards. Input: {raw_text}"
-        return get_ai_response(prompt)
+        
+        prompt = f"""
+        Translate these headlines to {language}. 
+        IMPORTANT: Return ONLY valid HTML code. Do not use markdown ```html blocks.
+        Format as: <div style='border-left:4px solid #138808; padding:10px; background:#f9f9f9; margin-bottom:10px;'><b>Headline</b><br><small>Summary</small></div>
+        Input: {raw_text}
+        """
+        response_text = get_ai_response(prompt)
+        
+        # CLEANUP FIX: Remove markdown codes if the AI adds them
+        clean_text = response_text.replace("```html", "").replace("```", "")
+        return clean_text
     except: return "News unavailable."
+
+def get_weather(city):
+    if not WEATHER_API_KEY: return "Sunny", 32
+    try:
+        url = f"[http://api.openweathermap.org/data/2.5/weather?q=](http://api.openweathermap.org/data/2.5/weather?q=){city}&appid={WEATHER_API_KEY}&units=metric"
+        data = requests.get(url).json()
+        return data['weather'][0]['main'], data['main']['temp']
+    except: return "Clear", 28
 
 # --- 5. MAIN APP ---
 def main():
@@ -206,44 +196,40 @@ def main():
                     st.markdown(f"<div class='feature-card'>{res}</div>", unsafe_allow_html=True)
                     speak_text(res.replace("*", ""), voice_lang_code)
 
-    # === TAB 2: SMART FARM (Simplified Language) ===
+    # === TAB 2: SMART FARM (Simplified) ===
     with tabs[1]:
         st.markdown(f"### 🌱 Smart Farm ({target_lang})")
         tool = st.radio("Select Tool:", ["💰 Profit Calculator", "📅 Weekly Planner"], horizontal=True)
         st.markdown("---")
 
         if "Profit" in tool:
-            # SIMPLIFIED FARMER LANGUAGE
             c1, c2 = st.columns(2)
             with c1: 
-                season = st.selectbox("Season / हंगाम", ["Kharif (Monsoon / पावसाळा)", "Rabi (Winter / हिवाळा)", "Zaid (Summer / उन्हाळा)"])
+                season = st.selectbox("Season / हंगाम", ["Kharif (Monsoon)", "Rabi (Winter)", "Zaid (Summer)"])
                 budget = st.selectbox("Budget / गुंतवणूक", ["Low (कमी)", "Medium (मध्यम)", "High (जास्त)"])
             with c2: 
-                water = st.selectbox("Water / पाणी", ["Rainfed (केवळ पाऊस)", "Well/Bore (विहीर/बोअर)", "Full Irrigation (मुबलक पाणी)"])
+                water = st.selectbox("Water / पाणी", ["Rainfed (पाऊस)", "Well (विहीर)", "Irrigation (कॅनॉल)"])
                 land = st.text_input("Land / जमीन", "1 Acre")
             
-            if st.button("🚀 Calculate Profit / नफा शोधा"):
+            if st.button("🚀 Calculate Profit"):
                 with st.spinner("Analyzing..."):
                     prompt = f"Suggest 3 most profitable crops for Season: {season}, Location: {user_city}, Budget: {budget}, Water: {water}. Output in {target_lang}."
                     res = get_ai_response(prompt)
                     st.markdown(f"<div class='feature-card' style='border-left:5px solid #ff9933'>{res}</div>", unsafe_allow_html=True)
                     speak_text("Here is the profit plan.", voice_lang_code)
-
         else:
             c1, c2 = st.columns(2)
             with c1: crop_name = st.text_input("Crop Name", "Sugarcane")
             with c2: sow_date = st.date_input("Sowing Date", datetime.date.today())
             
-            days_old = (datetime.date.today() - sow_date).days
-            st.write(f"**Crop Age:** {days_old} Days")
-
             if st.button("📝 Create Schedule"):
                 with st.spinner("Creating Plan..."):
+                    days_old = (datetime.date.today() - sow_date).days
                     prompt = f"Create weekly schedule for {crop_name} (Age: {days_old} days). Language: {target_lang}."
                     res = get_ai_response(prompt)
                     st.markdown(f"<div class='feature-card'>{res}</div>", unsafe_allow_html=True)
 
-    # === TAB 3: SCHEMES ===
+    # === TAB 3: SCHEMES (Fixed HTML News) ===
     with tabs[2]:
         st.markdown("### 🏛️ Schemes")
         cols = st.columns(2)
@@ -265,7 +251,6 @@ def main():
         for msg in st.session_state.messages:
             with st.chat_message(msg["role"]): st.markdown(msg["content"])
         
-        # 3D PULSING VOICE BOX
         st.markdown("""
             <div class="voice-box">
                 <h3 style="color:#138808; margin:0;">🎙️ Tap Below to Speak</h3>
@@ -273,21 +258,18 @@ def main():
             </div>
         """, unsafe_allow_html=True)
 
-        # SAFETY CHECK IMPORT
+        # SAFE IMPORT (Fixes 'ModuleNotFound' crash)
         try:
             from streamlit_mic_recorder import speech_to_text
             audio_text = speech_to_text(
                 language=voice_lang_code,
-                start_prompt="🟢 START (सुरू करा)",
-                stop_prompt="🔴 STOP (थांबवा)",
+                start_prompt="🟢 START",
+                stop_prompt="🔴 STOP",
                 just_once=True,
                 key='STT_KEY'
             )
-        except ImportError:
-            st.error("⚠️ Voice Library Missing! Please verify requirements.txt")
-            audio_text = None
-        except Exception:
-            st.warning("⚠️ Voice unavailable on this browser. Use text below.")
+        except:
+            st.warning("⚠️ Microphone library missing. Use text input.")
             audio_text = None
         
         text_input = st.chat_input("...or type here")
