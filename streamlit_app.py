@@ -25,7 +25,7 @@ if "WEATHER_API_KEY" in st.secrets:
 else:
     WEATHER_API_KEY = ""
 
-# --- 3. CSS & JS (THE DEEP DARK MODE FIX) ---
+# --- 3. CSS & JS (DEEP DARK MODE FIX) ---
 st.markdown("""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap');
@@ -36,48 +36,36 @@ st.markdown("""
         font-family: 'Poppins', sans-serif; 
     }
     
-    /* 2. FORCE BLACK TEXT EVERYWHERE */
-    h1, h2, h3, h4, h5, h6, p, div, span, label, li, .stMarkdown, .stText, .stTextInput, .stSelectbox { 
+    /* 2. FORCE BLACK TEXT */
+    h1, h2, h3, h4, h5, h6, p, div, span, label, li, .stMarkdown, .stText, .stTextInput, .stSelectbox, .stDateInput { 
         color: #1a1a1a !important; 
     }
 
     /* --- 3. THE "DEEP" DROPDOWN FIX --- */
-    /* We target the specific 'Virtual List' Streamlit uses */
     div[data-baseweb="popover"], div[data-baseweb="menu"], ul[role="listbox"] {
         background-color: #ffffff !important;
         border: 1px solid #ddd !important;
     }
-    
-    /* The individual options */
     li[role="option"], li[data-baseweb="option"] {
         background-color: #ffffff !important;
         color: #000000 !important;
     }
-    
-    /* The text inside options */
     li[role="option"] span, li[data-baseweb="option"] span {
         color: #000000 !important;
     }
-    
-    /* Hover State - Green Highlight */
     li[role="option"]:hover, li[data-baseweb="option"]:hover {
         background-color: #e8f5e9 !important;
         color: #000000 !important;
     }
-    
-    /* Selected State - Dark Green */
     li[role="option"][aria-selected="true"], li[data-baseweb="option"][aria-selected="true"] {
         background-color: #138808 !important;
         color: #ffffff !important;
     }
-    
-    /* The Clickable Box */
     div[data-baseweb="select"] > div {
         background-color: #ffffff !important;
         color: #000000 !important;
         border: 1px solid #ccc !important;
     }
-    /* ------------------------------------- */
 
     /* 4. NAVBAR & HERO */
     .hero-container {
@@ -117,13 +105,12 @@ st.markdown("""
 
 # --- 4. JS VOICE ASSISTANT FUNCTION ---
 def speak_text(text, lang_code):
-    # This creates a hidden HTML element that uses browser's TTS
     js = f"""
     <script>
         var msg = new SpeechSynthesisUtterance();
         msg.text = {json.dumps(text)};
         msg.lang = '{lang_code}';
-        window.speechSynthesis.cancel(); // Stop previous
+        window.speechSynthesis.cancel();
         window.speechSynthesis.speak(msg);
     </script>
     """
@@ -189,7 +176,7 @@ def main():
 
     st.write("---")
 
-    # --- SETTINGS & LOCATION ---
+    # --- SETTINGS ---
     with st.container():
         c1, c2, c3 = st.columns([2, 1, 1])
         with c1: 
@@ -200,15 +187,15 @@ def main():
             }
             sel_lang_key = st.selectbox("Select Language / भाषा", list(lang_map.keys()))
             target_lang = sel_lang_key
-            voice_lang_code = lang_map[sel_lang_key] # For Voice Assistant
+            voice_lang_code = lang_map[sel_lang_key]
             
         with c2: user_city = st.text_input("Village / गाव", "Kolhapur")
         with c3: 
             w_cond, w_temp = get_weather(user_city)
             st.markdown(f"<div style='background:white; padding:8px; border-radius:8px; text-align:center; margin-top:28px;'><b>{w_temp}°C</b><br>{w_cond}</div>", unsafe_allow_html=True)
 
-    # --- TABS (Updated with Profit Calc) ---
-    tabs = st.tabs(["🩺 Doctor", "💰 Profit & Plan", "📰 Yojana", "💬 Chat"])
+    # --- TABS (Updated with BOTH Planner & Profit) ---
+    tabs = st.tabs(["🩺 Doctor", "🌱 Smart Farm", "📰 Yojana", "💬 Chat"])
 
     # === TAB 1: CROP DOCTOR (WITH VOICE) ===
     with tabs[0]:
@@ -232,38 +219,49 @@ def main():
                     res = get_ai_response(prompt, {"mime_type": "image/jpeg", "data": img_bytes})
                     st.success("Analysis Complete")
                     st.markdown(f"<div class='feature-card'>{res}</div>", unsafe_allow_html=True)
-                    # VOICE OUTPUT
                     speak_text(res.replace("*", ""), voice_lang_code)
 
-    # === TAB 2: PROFIT CALCULATOR (NEW FEATURE) ===
+    # === TAB 2: SMART FARM (BOTH TOOLS RESTORED) ===
     with tabs[1]:
-        st.markdown(f"### 💰 Profit Calculator & Planner")
-        st.info("💡 **AI Suggestion:** Find out which crop will give you maximum money this season.")
+        st.markdown(f"### 🌱 Smart Farm Manager ({target_lang})")
         
-        c1, c2 = st.columns(2)
-        with c1: 
-            season = st.selectbox("Current Season", ["Kharif (Monsoon)", "Rabi (Winter)", "Zaid (Summer)"])
-            land_size = st.text_input("Land Size (Acres)", "2")
-        with c2: 
-            budget = st.selectbox("Investment Capability", ["Low Budget", "Medium Budget", "High Budget"])
-            water = st.selectbox("Water Source", ["Rainfed (Low Water)", "Well/Canal (Medium)", "Drip Irrigation (High)"])
+        # Use Radio to switch between tools to save space
+        tool_choice = st.radio("Select Tool / साधन निवडा:", ["💰 Profit Calculator (New Crop)", "📅 Weekly Planner (Current Crop)"], horizontal=True)
 
-        if st.button("🚀 Suggest Profitable Crops"):
-            with st.spinner("AI is calculating market trends..."):
-                prompt = f"""
-                Act as an Agriculture Economist.
-                Season: {season}. Location: {user_city}, India.
-                Budget: {budget}. Water: {water}.
-                Task: Suggest 3 MOST PROFITABLE crops to plant NOW.
-                For each crop, explain WHY it is profitable (Market demand, price).
-                Output language: {target_lang}.
-                Format: 
-                1. Crop Name - Expected Profit/Acre
-                2. ...
-                """
-                profit_plan = get_ai_response(prompt)
-                st.markdown(f"<div class='feature-card' style='border-left: 5px solid #ff9933;'>{profit_plan}</div>", unsafe_allow_html=True)
-                speak_text("Here are the most profitable crops for you.", voice_lang_code)
+        st.markdown("---")
+
+        if tool_choice == "💰 Profit Calculator (New Crop)":
+            st.info("💡 **AI Suggestion:** Find out which crop will give you maximum money.")
+            c1, c2 = st.columns(2)
+            with c1: 
+                season = st.selectbox("Season", ["Kharif", "Rabi", "Zaid"])
+                land = st.text_input("Land (Acres)", "2")
+            with c2: 
+                budget = st.selectbox("Budget", ["Low", "Medium", "High"])
+                water = st.selectbox("Water", ["Rainfed", "Well", "Drip"])
+            
+            if st.button("🚀 Find Profitable Crops"):
+                with st.spinner("Analyzing Market..."):
+                    prompt = f"Suggest 3 most profitable crops for Season: {season}, Location: {user_city}, Budget: {budget}, Water: {water}. Output in {target_lang}."
+                    res = get_ai_response(prompt)
+                    st.markdown(f"<div class='feature-card' style='border-left: 5px solid #ff9933;'>{res}</div>", unsafe_allow_html=True)
+                    speak_text("Here are the best crops for you.", voice_lang_code)
+        
+        else: # WEEKLY PLANNER (RESTORED!)
+            st.info("📅 **Weekly Schedule:** Get a to-do list for your standing crop.")
+            c1, c2 = st.columns(2)
+            with c1: crop_name = st.text_input("Crop Name", "Sugarcane")
+            with c2: sow_date = st.date_input("Sowing Date", datetime.date.today())
+            
+            days_old = (datetime.date.today() - sow_date).days
+            st.write(f"**Crop Age:** {days_old} Days")
+
+            if st.button("📝 Create Schedule"):
+                with st.spinner("Creating Plan..."):
+                    prompt = f"Create a detailed weekly schedule for {crop_name} (Age: {days_old} days). Language: {target_lang}. Include fertilizer, water, and disease prevention."
+                    res = get_ai_response(prompt)
+                    st.markdown(f"<div class='feature-card'>{res}</div>", unsafe_allow_html=True)
+                    speak_text("I have created your weekly schedule.", voice_lang_code)
 
     # === TAB 3: NEWS & SCHEMES ===
     with tabs[2]:
@@ -294,7 +292,6 @@ def main():
                     reply = get_ai_response(f"Reply in {target_lang}. Q: {prompt}")
                     st.markdown(reply)
                     st.session_state.messages.append({"role": "assistant", "content": reply})
-                    # VOICE AUTO-SPEAK
                     speak_text(reply.replace("*", ""), voice_lang_code)
 
 if __name__ == "__main__":
