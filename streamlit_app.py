@@ -24,54 +24,76 @@ if "WEATHER_API_KEY" in st.secrets:
 else:
     WEATHER_API_KEY = ""
 
-# --- 3. CSS STYLING (VIDEO READY) ---
+# --- 3. CSS STYLING (NUCLEAR DROPDOWN FIX) ---
 st.markdown("""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap');
     
-    /* 1. BACKGROUND THEME */
+    /* 1. FORCE APP BACKGROUND */
     .stApp { 
         background-color: #f1f8e9 !important; /* Mint Green */
         font-family: 'Poppins', sans-serif; 
     }
     
-    /* 2. FORCE ALL TEXT BLACK */
-    h1, h2, h3, h4, h5, h6, p, div, span, label, li, .stMarkdown { 
+    /* 2. FORCE ALL TEXT BLACK (Headings, Paragraphs, everything) */
+    h1, h2, h3, h4, h5, h6, p, div, span, label, li, .stMarkdown, .stText { 
         color: #1a1a1a !important; 
     }
 
-    /* --- 3. FIX FOR THE BLACK DROPDOWN (CRITICAL) --- */
-    /* Target the list container specifically */
+    /* --- 3. THE "NUCLEAR" DROPDOWN FIX --- */
+    /* Target the Popup Container */
+    div[data-baseweb="popover"] {
+        background-color: #ffffff !important;
+        border: 1px solid #ccc !important;
+    }
+    
+    /* Target the List inside the Popup */
     ul[data-baseweb="menu"] {
         background-color: #ffffff !important;
-        border: 1px solid #dcdcdc !important;
     }
-    /* Target the individual items */
+    
+    /* Target the Options (The items you click) */
     li[data-baseweb="option"] {
         background-color: #ffffff !important;
         color: #000000 !important;
+        opacity: 1 !important;
     }
-    /* Target the text inside the items */
+    
+    /* Target the TEXT inside the Options */
     li[data-baseweb="option"] span {
         color: #000000 !important;
     }
-    /* Target the container when it pops open */
-    div[data-baseweb="popover"] {
-        background-color: #ffffff !important;
+    
+    /* Target Hover State (When mouse moves over) */
+    li[data-baseweb="option"]:hover {
+        background-color: #e8f5e9 !important; /* Light Green */
+        color: #000000 !important;
     }
-    /* Target the box you click on */
+    
+    /* Target Selected State */
+    li[data-baseweb="option"][aria-selected="true"] {
+        background-color: #138808 !important;
+        color: #ffffff !important;
+    }
+    
+    /* Target the Input Box itself (Before clicking) */
     div[data-baseweb="select"] > div {
         background-color: #ffffff !important;
         color: #000000 !important;
-        border: 1px solid #dcdcdc !important;
+        border: 1px solid #ccc !important;
     }
-    /* ----------------------------------------------- */
+    
+    /* Force Input Text to be Black */
+    .stSelectbox div[data-testid="stMarkdownContainer"] p {
+        color: #000000 !important;
+    }
+    /* ------------------------------------- */
 
     /* 4. NAVBAR & HERO */
     .hero-container {
         background: white;
         border-bottom: 4px solid #ff9933; /* Saffron Line */
-        padding: 20px;
+        padding: 20px 20px;
         margin: -1rem -1rem 20px -1rem;
         display: flex; align-items: center;
         box-shadow: 0 4px 10px rgba(0,0,0,0.05);
@@ -84,18 +106,27 @@ st.markdown("""
         margin-bottom: 15px;
     }
     .stButton>button {
-        background: #138808 !important; color: white !important;
-        border-radius: 8px; border: none; font-weight: 600; width: 100%; padding: 12px;
+        background: #138808 !important; /* India Green */
+        color: white !important;
+        border-radius: 8px; border: none; font-weight: 600; width: 100%;
+        padding: 12px;
     }
+    .stButton>button:hover { background: #0f6b06 !important; }
 
     /* 6. HIDE JUNK */
     #MainMenu, header, footer { visibility: hidden; }
     .block-container { padding-top: 0rem; padding-bottom: 5rem; }
     
     /* 7. TABS */
-    .stTabs [data-baseweb="tab-list"] { background: white; padding: 5px; border-radius: 10px; }
+    .stTabs [data-baseweb="tab-list"] { background: white; padding: 5px; border-radius: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
     .stTabs [data-baseweb="tab"] { border-radius: 8px; border: none; font-size: 14px; flex: 1; color: #333; }
     .stTabs [aria-selected="true"] { background: #138808 !important; color: white !important; }
+    
+    /* 8. INPUT FIELDS (Text Input) */
+    .stTextInput input {
+        color: #000000 !important;
+        background-color: #ffffff !important;
+    }
     </style>
 """, unsafe_allow_html=True)
 
@@ -181,7 +212,7 @@ def main():
             target_lang = lang_map[sel_lang]
             
         with c2:
-            # FIXED LOCATION FOR DEMO VIDEO (Replaces Auto-Detect)
+            # FIXED LOCATION FOR VIDEO
             user_city = st.text_input("Village / गाव", "Kolhapur")
             
         with c3: 
