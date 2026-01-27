@@ -110,10 +110,12 @@ def speak_text(text, lang_code):
     st.components.v1.html(js, height=0, width=0)
 
 PERMANENT_SCHEMES = [
-    {"name": "PM-KISAN", "desc": "₹6,000/year support", "link": "https://pmkisan.gov.in/"},
-    {"name": "PMFBY", "desc": "Crop Insurance", "link": "https://pmfby.gov.in/"},
-    {"name": "KCC Loan", "desc": "Low Interest Loan", "link": "https://pib.gov.in/"},
-    {"name": "e-NAM", "desc": "Sell Online", "link": "https://enam.gov.in/"},
+    {"name": "PM-KISAN", "desc": "₹6,000/year income support for all landholding farmers.", "link": "https://pmkisan.gov.in/"},
+    {"name": "PMFBY (Insurance)", "desc": "Crop insurance scheme with lowest premium rates.", "link": "https://pmfby.gov.in/"},
+    {"name": "Kisan Credit Card", "desc": "Low interest loans (4%) for farming needs.", "link": "https://pib.gov.in/"},
+    {"name": "e-NAM Market", "desc": "Online trading platform to sell crops for better prices.", "link": "https://enam.gov.in/"},
+    {"name": "Soil Health Card", "desc": "Free soil testing reports to check fertilizer needs.", "link": "https://soilhealth.dac.gov.in/"},
+    {"name": "PM-KUSUM", "desc": "Subsidy for installing Solar Pumps on farms.", "link": "https://pmkusum.mnre.gov.in/"}
 ]
 
 def get_working_model():
