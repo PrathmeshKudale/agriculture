@@ -39,7 +39,7 @@ st.markdown("""
     
     /* 2. TEXT VISIBILITY: Dark Grey/Black */
     h1, h2, h3, h4, h5, h6, p, span, div, label, li, .stMarkdown {
-        color: #1f2937 !important;
+        color: #ced9eb !important;
     }
     
     /* 3. CARDS: White with Soft Shadow */
