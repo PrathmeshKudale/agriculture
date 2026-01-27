@@ -26,68 +26,25 @@ if "WEATHER_API_KEY" in st.secrets:
 else:
     WEATHER_API_KEY = ""
 
-# --- 3. FARMERCHAT THEME CSS (WITH LANGUAGE COLOR FIX) ---
+# --- 3. CLEAN & SAFE CSS ---
 st.markdown("""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
     
     /* 1. APP BACKGROUND */
     .stApp {
-        background-color: #f3f4f6 !important;
+        background-color: #f3f4f6;
         font-family: 'Inter', sans-serif;
     }
     
-    /* 2. TEXT VISIBILITY */
+    /* 2. TEXT COLORS */
     h1, h2, h3, h4, h5, h6, p, div, span, label, li {
-        color: #111827 !important;
-    }
-
-    /* --- 3. THE "LANGUAGE DROPDOWN" FIX --- */
-    /* This forces the box you click on to be White */
-    div[data-baseweb="select"] > div {
-        background-color: #ffffff !important;
-        color: #000000 !important;
-        border: 1px solid #d1d5db !important;
+        color: #111827;
     }
     
-    /* This forces the Text inside the box to be Black */
-    div[data-baseweb="select"] span {
-        color: #000000 !important;
-    }
-
-    /* This forces the POPUP MENU (The Black Box in your image) to be White */
-    div[data-baseweb="popover"], div[data-baseweb="menu"], ul[data-baseweb="menu"] {
-        background-color: #ffffff !important;
-        border: 1px solid #e5e7eb !important;
-    }
-
-    /* This forces the Options in the list to be White with Black Text */
-    li[data-baseweb="option"] {
-        background-color: #ffffff !important;
-        color: #000000 !important;
-    }
-
-    /* This fixes the text inside the options */
-    li[data-baseweb="option"] div {
-        color: #000000 !important;
-    }
-    
-    /* Hover Color (Green) */
-    li[data-baseweb="option"]:hover {
-        background-color: #ecfdf5 !important;
-        color: #000000 !important;
-    }
-    
-    /* Selected Item Color */
-    li[data-baseweb="option"][aria-selected="true"] {
-        background-color: #10b981 !important;
-        color: #ffffff !important;
-    }
-    /* ------------------------------------- */
-
-    /* 4. CARDS */
+    /* 3. CARD STYLE */
     .app-card {
-        background-color: #ffffff;
+        background-color: white;
         border-radius: 16px;
         padding: 20px;
         margin-bottom: 15px;
@@ -95,46 +52,53 @@ st.markdown("""
         border: 1px solid #e5e7eb;
     }
     
-    /* 5. WEATHER WIDGET */
+    /* 4. WEATHER WIDGET */
     .weather-box {
         background: linear-gradient(135deg, #10b981 0%, #059669 100%);
         border-radius: 20px;
         padding: 20px;
         margin-bottom: 20px;
+        color: white !important;
         box-shadow: 0 4px 6px -1px rgba(16, 185, 129, 0.4);
         display: flex; justify-content: space-between; align-items: center;
     }
     .weather-box h1, .weather-box p { color: white !important; }
 
-    /* 6. BUTTONS */
+    /* 5. GREEN BUTTONS */
     .stButton>button {
-        background-color: #10b981 !important;
-        color: white !important;
+        background-color: #10b981;
+        color: white;
         border-radius: 50px;
         border: none;
         padding: 12px 24px;
         font-weight: 600;
         width: 100%;
     }
-    .stButton>button:hover { background-color: #059669 !important; }
+    .stButton>button:hover { background-color: #059669; color: white; }
 
-    /* 7. INPUTS */
+    /* 6. INPUT FIELDS (Safe Styling) */
     .stTextInput input {
+        background-color: white;
+        color: black;
+        border-radius: 10px;
+    }
+    
+    /* 7. DROPDOWN FIX (Simplified) */
+    /* We just ensure the background is white to avoid the black box issue */
+    ul[data-baseweb="menu"] {
         background-color: white !important;
+    }
+    li[data-baseweb="option"] {
         color: black !important;
     }
 
-    /* 8. TABS */
-    .stTabs [data-baseweb="tab-list"] { background-color: white; padding: 5px; border-radius: 50px; }
-    .stTabs [data-baseweb="tab"] { border-radius: 30px; border: none; }
-    .stTabs [aria-selected="true"] { background-color: #10b981 !important; color: white !important; }
-
+    /* Hide Streamlit Header */
     #MainMenu, header, footer { visibility: hidden; }
     .block-container { padding-top: 1rem; padding-bottom: 6rem; }
     </style>
 """, unsafe_allow_html=True)
 
-# --- 4. LOGIC FUNCTIONS ---
+# --- 4. LOGIC ---
 def get_working_model():
     try:
         models = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
@@ -188,7 +152,7 @@ def main():
     with c2:
         st.markdown("<div style='background:#10b981; width:40px; height:40px; border-radius:50%; display:flex; align-items:center; justify-content:center; color:white; font-weight:bold;'>GM</div>", unsafe_allow_html=True)
 
-    # --- WEATHER WIDGET ---
+    # --- WEATHER ---
     w_cond, w_temp = get_weather(st.session_state.user_city)
     st.markdown(f"""
     <div class="weather-box">
@@ -201,6 +165,7 @@ def main():
     """, unsafe_allow_html=True)
 
     # --- LANGUAGE SELECTOR ---
+    # We use st.radio for fewer than 5 options if dropdown fails, but let's try standard selectbox first
     lang_map = {"English": "en-IN", "Marathi": "mr-IN", "Hindi": "hi-IN", "Tamil": "ta-IN", "Telugu": "te-IN"}
     selected_lang = st.selectbox("🌐 Choose Language / भाषा", list(lang_map.keys()))
     voice_lang = lang_map[selected_lang]
@@ -226,7 +191,7 @@ def main():
         if file:
             st.image(file, width=200)
             if st.button("Diagnose & Speak"):
-                with st.spinner("AI Doctor is checking..."):
+                with st.spinner("Checking..."):
                     img_bytes = file.getvalue()
                     prompt = f"Identify crop disease. Suggest Organic remedy. Output in {selected_lang}."
                     res = get_ai_response(prompt, {"mime_type": "image/jpeg", "data": img_bytes})
@@ -237,17 +202,8 @@ def main():
 
     # === TAB 2: NEWS & SCHEMES ===
     with tabs[1]:
-        st.markdown(f"### 📢 Government Schemes")
-        
+        st.markdown(f"### 📢 Schemes")
         st.markdown('<div class="app-card">', unsafe_allow_html=True)
-        schemes = [
-            {"name": "PM-KISAN", "desc": "₹6,000/year support."},
-            {"name": "PMFBY", "desc": "Crop Insurance."}
-        ]
-        for s in schemes:
-            st.markdown(f"**{s['name']}**: {s['desc']}")
-            st.markdown("---")
-        
         if st.button("🔄 Get Live News"):
             with st.spinner("Fetching..."):
                 news = fetch_translated_news(selected_lang)
@@ -257,7 +213,7 @@ def main():
     # === TAB 3: CHATBOT ===
     with tabs[2]:
         st.markdown('<div class="app-card" style="min-height:400px;">', unsafe_allow_html=True)
-        st.subheader("💬 Ask Assistant")
+        st.subheader("💬 Assistant")
         
         for msg in st.session_state.messages:
             with st.chat_message(msg["role"]): st.markdown(msg["content"])
@@ -266,7 +222,6 @@ def main():
         audio_text = speech_to_text(language=voice_lang, start_prompt="🟢 Start", stop_prompt="🔴 Stop", just_once=True, key='STT')
         
         text_input = st.chat_input(f"Ask in {selected_lang}...")
-        
         prompt = audio_text if audio_text else text_input
 
         if prompt:
@@ -283,21 +238,14 @@ def main():
 
     # === TAB 4: PLANNER ===
     with tabs[3]:
-        st.markdown("### 📅 Smart Planner")
+        st.markdown("### 📅 Planner")
         st.markdown('<div class="app-card">', unsafe_allow_html=True)
         crop = st.text_input("Crop Name", "Tomato")
         date = st.date_input("Sowing Date", datetime.date.today())
-        days = (datetime.date.today() - date).days
-        
-        st.markdown(f"""
-        <div style="text-align:center; margin:20px;">
-            <h1 style="color:#10b981; margin:0;">{days}</h1>
-            <p>Days Old</p>
-        </div>
-        """, unsafe_allow_html=True)
         
         if st.button("Generate Schedule"):
             with st.spinner("Creating..."):
+                days = (datetime.date.today() - date).days
                 sch = get_ai_response(f"Create weekly schedule for {crop} (Age: {days} days) in {selected_lang}.")
                 st.write(sch)
         st.markdown('</div>', unsafe_allow_html=True)
