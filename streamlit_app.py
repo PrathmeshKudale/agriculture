@@ -24,38 +24,68 @@ if "WEATHER_API_KEY" in st.secrets:
 else:
     WEATHER_API_KEY = ""
 
-# --- 3. CSS STYLING ---
+# --- 3. CSS STYLING (FIXED DROPDOWN) ---
 st.markdown("""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap');
     
-    /* 1. RESET THEME & BACKGROUND COLOR CHANGE */
+    /* 1. RESET THEME & BACKGROUND COLOR */
     .stApp { 
-        /* Changed from white to a soft, natural mint green */
-        background-color: #f1f8e9 !important; 
+        background-color: #f1f8e9 !important; /* Mint Green */
         font-family: 'Poppins', sans-serif; 
     }
     
-    /* 2. FORCE BLACK TEXT */
+    /* 2. FORCE BLACK TEXT EVERYWHERE */
     h1, h2, h3, h4, h5, h6, p, div, span, label, li, .stMarkdown { color: #1a1a1a !important; }
 
-    /* 3. DROPDOWN MENU FIX */
-    div[data-baseweb="popover"], div[data-baseweb="select"] > div, ul[data-baseweb="menu"] {
-        background-color: white !important;
-        border: 1px solid #ccc !important;
+    /* --- 3. THE "NUCLEAR" DROPDOWN FIX --- */
+    /* This forces the popup menu to be WHITE regardless of Dark Mode */
+    
+    /* The Container of the menu */
+    div[data-baseweb="popover"], div[data-baseweb="menu"], ul[data-baseweb="menu"] {
+        background-color: #ffffff !important;
+        border: 1px solid #cccccc !important;
     }
+
+    /* The individual options (English, Marathi, etc.) */
     li[data-baseweb="option"] {
-        background-color: white !important;
-        color: black !important;
+        background-color: #ffffff !important;
+        color: #000000 !important; /* Force Text Black */
     }
+
+    /* The Text inside the options */
+    li[data-baseweb="option"] span, li[data-baseweb="option"] div {
+        color: #000000 !important;
+    }
+
+    /* When you Hover over an option */
     li[data-baseweb="option"]:hover {
-        background-color: #e8f5e9 !important;
-        color: black !important;
+        background-color: #e8f5e9 !important; /* Light Green Hover */
+        color: #000000 !important;
     }
+
+    /* The Selected Option */
+    li[data-baseweb="option"][aria-selected="true"] {
+        background-color: #138808 !important; /* Dark Green Selected */
+        color: #ffffff !important;
+    }
+
+    /* The Box you click on */
+    div[data-baseweb="select"] > div {
+        background-color: #ffffff !important;
+        color: #000000 !important;
+        border: 1px solid #cccccc !important;
+    }
+    
+    /* The Text inside the box you click on */
+    div[data-baseweb="select"] span {
+        color: #000000 !important;
+    }
+    /* ------------------------------------- */
 
     /* 4. NAVBAR & HERO */
     .hero-container {
-        background: white; /* Keep navbar white for contrast */
+        background: white; 
         border-bottom: 4px solid #ff9933;
         padding: 20px;
         margin: -1rem -1rem 20px -1rem;
@@ -65,7 +95,7 @@ st.markdown("""
 
     /* 5. CARDS & BUTTONS */
     .feature-card {
-        background: white; /* Cards remain white to pop against the new background */
+        background: white; 
         border-radius: 12px; padding: 20px;
         box-shadow: 0 2px 8px rgba(0,0,0,0.05); border: 1px solid #e0e0e0;
         margin-bottom: 15px;
