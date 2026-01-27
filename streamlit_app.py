@@ -24,39 +24,53 @@ if "WEATHER_API_KEY" in st.secrets:
 else:
     WEATHER_API_KEY = ""
 
-# --- 3. CSS STYLING ---
+# --- 3. CSS STYLING (VIDEO READY) ---
 st.markdown("""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap');
     
-    /* 1. RESET THEME & BACKGROUND COLOR CHANGE */
+    /* 1. BACKGROUND THEME */
     .stApp { 
-        /* Changed from white to a soft, natural mint green */
-        background-color: #f1f8e9 !important; 
+        background-color: #f1f8e9 !important; /* Mint Green */
         font-family: 'Poppins', sans-serif; 
     }
     
-    /* 2. FORCE BLACK TEXT */
-    h1, h2, h3, h4, h5, h6, p, div, span, label, li, .stMarkdown { color: #1a1a1a !important; }
+    /* 2. FORCE ALL TEXT BLACK */
+    h1, h2, h3, h4, h5, h6, p, div, span, label, li, .stMarkdown { 
+        color: #1a1a1a !important; 
+    }
 
-    /* 3. DROPDOWN MENU FIX */
-    div[data-baseweb="popover"], div[data-baseweb="select"] > div, ul[data-baseweb="menu"] {
-        background-color: white !important;
-        border: 1px solid #ccc !important;
+    /* --- 3. FIX FOR THE BLACK DROPDOWN (CRITICAL) --- */
+    /* Target the list container specifically */
+    ul[data-baseweb="menu"] {
+        background-color: #ffffff !important;
+        border: 1px solid #dcdcdc !important;
     }
+    /* Target the individual items */
     li[data-baseweb="option"] {
-        background-color: white !important;
-        color: black !important;
+        background-color: #ffffff !important;
+        color: #000000 !important;
     }
-    li[data-baseweb="option"]:hover {
-        background-color: #e8f5e9 !important;
-        color: black !important;
+    /* Target the text inside the items */
+    li[data-baseweb="option"] span {
+        color: #000000 !important;
     }
+    /* Target the container when it pops open */
+    div[data-baseweb="popover"] {
+        background-color: #ffffff !important;
+    }
+    /* Target the box you click on */
+    div[data-baseweb="select"] > div {
+        background-color: #ffffff !important;
+        color: #000000 !important;
+        border: 1px solid #dcdcdc !important;
+    }
+    /* ----------------------------------------------- */
 
     /* 4. NAVBAR & HERO */
     .hero-container {
-        background: white; /* Keep navbar white for contrast */
-        border-bottom: 4px solid #ff9933;
+        background: white;
+        border-bottom: 4px solid #ff9933; /* Saffron Line */
         padding: 20px;
         margin: -1rem -1rem 20px -1rem;
         display: flex; align-items: center;
@@ -65,8 +79,7 @@ st.markdown("""
 
     /* 5. CARDS & BUTTONS */
     .feature-card {
-        background: white; /* Cards remain white to pop against the new background */
-        border-radius: 12px; padding: 20px;
+        background: white; border-radius: 12px; padding: 20px;
         box-shadow: 0 2px 8px rgba(0,0,0,0.05); border: 1px solid #e0e0e0;
         margin-bottom: 15px;
     }
@@ -88,12 +101,10 @@ st.markdown("""
 
 # --- 4. DATA & LOGIC ---
 PERMANENT_SCHEMES = [
-    {"name": "PM-KISAN", "desc": "₹6,000/year income support for all landholding farmers.", "link": "https://pmkisan.gov.in/"},
-    {"name": "PMFBY (Insurance)", "desc": "Crop insurance scheme with lowest premium rates.", "link": "https://pmfby.gov.in/"},
-    {"name": "Kisan Credit Card", "desc": "Low interest loans (4%) for farming needs.", "link": "https://pib.gov.in/"},
-    {"name": "e-NAM Market", "desc": "Online trading platform to sell crops for better prices.", "link": "https://enam.gov.in/"},
-    {"name": "Soil Health Card", "desc": "Free soil testing reports to check fertilizer needs.", "link": "https://soilhealth.dac.gov.in/"},
-    {"name": "PM-KUSUM", "desc": "Subsidy for installing Solar Pumps on farms.", "link": "https://pmkusum.mnre.gov.in/"}
+    {"name": "PM-KISAN", "desc": "₹6000 Income Support", "link": "https://pmkisan.gov.in/"},
+    {"name": "PMFBY", "desc": "Crop Insurance", "link": "https://pmfby.gov.in/"},
+    {"name": "KCC Loan", "desc": "Kisan Credit Card", "link": "https://pib.gov.in/"},
+    {"name": "e-NAM", "desc": "Sell Crops Online", "link": "https://enam.gov.in/"},
 ]
 
 def get_working_model():
@@ -156,7 +167,7 @@ def main():
 
     st.write("---")
 
-    # --- SETTINGS (LOCATION FIXED) ---
+    # --- SETTINGS ---
     with st.container():
         c1, c2, c3 = st.columns([2, 1, 1])
         with c1: 
@@ -170,7 +181,7 @@ def main():
             target_lang = lang_map[sel_lang]
             
         with c2:
-            # MANUAL CITY INPUT (Best for accuracy)
+            # FIXED LOCATION FOR DEMO VIDEO (Replaces Auto-Detect)
             user_city = st.text_input("Village / गाव", "Kolhapur")
             
         with c3: 
