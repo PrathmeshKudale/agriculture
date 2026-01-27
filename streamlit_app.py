@@ -4,6 +4,7 @@ import feedparser
 import datetime
 import google.generativeai as genai
 import json
+from streamlit_mic_recorder import speech_to_text
 
 # --- 1. CONFIGURATION ---
 st.set_page_config(
@@ -25,85 +26,88 @@ if "WEATHER_API_KEY" in st.secrets:
 else:
     WEATHER_API_KEY = ""
 
-# --- 3. CSS & JS (DEEP DARK MODE FIX) ---
+# --- 3. CSS (HD BACKGROUND & VISUALS) ---
 st.markdown("""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap');
     
-    /* 1. APP THEME */
-    .stApp { 
-        background-color: #f1f8e9 !important; /* Earthy Mint Green */
-        font-family: 'Poppins', sans-serif; 
+    /* 1. HD BACKGROUND IMAGE */
+    .stApp {
+        /* High Quality Farm Image from Unsplash */
+        background-image: url("https://images.unsplash.com/photo-1500382017468-9049fed747ef?q=80&w=2832&auto=format&fit=crop");
+        background-size: cover;
+        background-position: center;
+        background-attachment: fixed;
+        font-family: 'Poppins', sans-serif;
     }
     
-    /* 2. FORCE BLACK TEXT */
+    /* 2. OVERLAY TO MAKE TEXT READABLE */
+    /* This adds a slight white tint so the image isn't too dark */
+    .stApp::before {
+        content: "";
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(255, 255, 255, 0.4); /* 40% White Tint */
+        pointer-events: none;
+        z-index: -1;
+    }
+
+    /* 3. FORCE BLACK TEXT */
     h1, h2, h3, h4, h5, h6, p, div, span, label, li, .stMarkdown, .stText, .stTextInput, .stSelectbox, .stDateInput { 
         color: #1a1a1a !important; 
     }
 
-    /* --- 3. THE "DEEP" DROPDOWN FIX --- */
-    div[data-baseweb="popover"], div[data-baseweb="menu"], ul[role="listbox"] {
-        background-color: #ffffff !important;
-        border: 1px solid #ddd !important;
-    }
-    li[role="option"], li[data-baseweb="option"] {
-        background-color: #ffffff !important;
-        color: #000000 !important;
-    }
-    li[role="option"] span, li[data-baseweb="option"] span {
-        color: #000000 !important;
-    }
-    li[role="option"]:hover, li[data-baseweb="option"]:hover {
-        background-color: #e8f5e9 !important;
-        color: #000000 !important;
-    }
-    li[role="option"][aria-selected="true"], li[data-baseweb="option"][aria-selected="true"] {
-        background-color: #138808 !important;
-        color: #ffffff !important;
-    }
-    div[data-baseweb="select"] > div {
-        background-color: #ffffff !important;
-        color: #000000 !important;
-        border: 1px solid #ccc !important;
-    }
+    /* 4. DROPDOWN FIX (Deep Dark Mode Fix) */
+    div[data-baseweb="popover"], div[data-baseweb="menu"], ul[role="listbox"] { background-color: #ffffff !important; border: 1px solid #ddd !important; }
+    li[role="option"], li[data-baseweb="option"] { background-color: #ffffff !important; color: #000000 !important; }
+    li[role="option"] span, li[data-baseweb="option"] span { color: #000000 !important; }
+    li[role="option"]:hover, li[data-baseweb="option"]:hover { background-color: #e8f5e9 !important; color: #000000 !important; }
+    li[role="option"][aria-selected="true"], li[data-baseweb="option"][aria-selected="true"] { background-color: #138808 !important; color: #ffffff !important; }
+    div[data-baseweb="select"] > div { background-color: #ffffff !important; color: #000000 !important; border: 1px solid #ccc !important; }
 
-    /* 4. NAVBAR & HERO */
+    /* 5. GLASS NAVBAR */
     .hero-container {
-        background: white;
+        background: rgba(255, 255, 255, 0.95); /* Almost solid white */
         border-bottom: 4px solid #ff9933;
         padding: 20px;
         margin: -1rem -1rem 20px -1rem;
         display: flex; align-items: center;
-        box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+        box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        backdrop-filter: blur(10px);
     }
 
-    /* 5. CARDS & BUTTONS */
+    /* 6. SOLID WHITE CARDS (Important for reading on top of image) */
     .feature-card {
-        background: white; border-radius: 12px; padding: 20px;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.05); border: 1px solid #e0e0e0;
+        background: #ffffff; 
+        border-radius: 12px; padding: 20px;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.1); 
+        border: 1px solid #e0e0e0;
         margin-bottom: 15px;
     }
-    .stButton>button {
-        background: #138808 !important; color: white !important;
-        border-radius: 8px; border: none; font-weight: 600; width: 100%; padding: 12px;
-    }
+    
+    .stButton>button { background: #138808 !important; color: white !important; border-radius: 8px; border: none; font-weight: 600; width: 100%; padding: 12px; }
     .stButton>button:hover { background: #0f6b06 !important; }
 
-    /* 6. HIDE JUNK */
     #MainMenu, header, footer { visibility: hidden; }
     .block-container { padding-top: 0rem; padding-bottom: 5rem; }
     
     /* 7. TABS */
-    .stTabs [data-baseweb="tab-list"] { background: white; padding: 5px; border-radius: 10px; }
+    .stTabs [data-baseweb="tab-list"] { 
+        background: rgba(255, 255, 255, 0.9); 
+        padding: 5px; border-radius: 10px; 
+        box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+    }
     .stTabs [data-baseweb="tab"] { border-radius: 8px; border: none; font-size: 14px; flex: 1; color: #333; }
     .stTabs [aria-selected="true"] { background: #138808 !important; color: white !important; }
     
-    /* 8. INPUTS */
     input { color: black !important; caret-color: black !important; }
     </style>
 """, unsafe_allow_html=True)
 
-# --- 4. JS VOICE ASSISTANT FUNCTION ---
+# --- 4. JS VOICE OUTPUT ---
 def speak_text(text, lang_code):
     js = f"""
     <script>
@@ -116,7 +120,7 @@ def speak_text(text, lang_code):
     """
     st.components.v1.html(js, height=0, width=0)
 
-# --- 5. LOGIC & DATA ---
+# --- 5. LOGIC ---
 PERMANENT_SCHEMES = [
     {"name": "PM-KISAN", "desc": "₹6,000/year income support for all landholding farmers.", "link": "https://pmkisan.gov.in/"},
     {"name": "PMFBY (Insurance)", "desc": "Crop insurance scheme with lowest premium rates.", "link": "https://pmfby.gov.in/"},
@@ -125,6 +129,7 @@ PERMANENT_SCHEMES = [
     {"name": "Soil Health Card", "desc": "Free soil testing reports to check fertilizer needs.", "link": "https://soilhealth.dac.gov.in/"},
     {"name": "PM-KUSUM", "desc": "Subsidy for installing Solar Pumps on farms.", "link": "https://pmkusum.mnre.gov.in/"}
 ]
+
 def get_working_model():
     try:
         available_models = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
@@ -178,7 +183,9 @@ def main():
     st.write("---")
 
     # --- SETTINGS ---
+    # We add a white background container for these inputs so they are readable
     with st.container():
+        st.markdown('<div class="feature-card">', unsafe_allow_html=True) # Start White Box
         c1, c2, c3 = st.columns([2, 1, 1])
         with c1: 
             lang_map = {
@@ -193,14 +200,17 @@ def main():
         with c2: user_city = st.text_input("Village / गाव", "Kolhapur")
         with c3: 
             w_cond, w_temp = get_weather(user_city)
-            st.markdown(f"<div style='background:white; padding:8px; border-radius:8px; text-align:center; margin-top:28px;'><b>{w_temp}°C</b><br>{w_cond}</div>", unsafe_allow_html=True)
+            st.markdown(f"<div style='background:#e9f7ef; padding:8px; border-radius:8px; text-align:center; margin-top:0px;'><b>{w_temp}°C</b><br>{w_cond}</div>", unsafe_allow_html=True)
+        st.markdown('</div>', unsafe_allow_html=True) # End White Box
 
-    # --- TABS (Updated with BOTH Planner & Profit) ---
+    # --- TABS ---
     tabs = st.tabs(["🩺 Doctor", "🌱 Smart Farm", "📰 Yojana", "💬 Chat"])
 
-    # === TAB 1: CROP DOCTOR (WITH VOICE) ===
+    # === TAB 1: CROP DOCTOR ===
     with tabs[0]:
         st.markdown(f"### 🩺 Crop Health Check ({target_lang})")
+        # White container for content
+        st.markdown('<div class="feature-card">', unsafe_allow_html=True)
         c1, c2 = st.columns([1, 1])
         with c1: uploaded_file = st.file_uploader("Upload File", type=['jpg','png'])
         with c2:
@@ -219,20 +229,19 @@ def main():
                     prompt = f"Identify crop disease. Suggest Organic & Chemical remedy. OUTPUT IN {target_lang}. Keep it short."
                     res = get_ai_response(prompt, {"mime_type": "image/jpeg", "data": img_bytes})
                     st.success("Analysis Complete")
-                    st.markdown(f"<div class='feature-card'>{res}</div>", unsafe_allow_html=True)
+                    st.write(res)
                     speak_text(res.replace("*", ""), voice_lang_code)
+        st.markdown('</div>', unsafe_allow_html=True)
 
-    # === TAB 2: SMART FARM (BOTH TOOLS RESTORED) ===
+    # === TAB 2: SMART FARM ===
     with tabs[1]:
         st.markdown(f"### 🌱 Smart Farm Manager ({target_lang})")
+        st.markdown('<div class="feature-card">', unsafe_allow_html=True)
         
-        # Use Radio to switch between tools to save space
-        tool_choice = st.radio("Select Tool / साधन निवडा:", ["💰 Profit Calculator (New Crop)", "📅 Weekly Planner (Current Crop)"], horizontal=True)
-
+        tool_choice = st.radio("Select Tool:", ["💰 Profit Calculator", "📅 Weekly Planner"], horizontal=True)
         st.markdown("---")
 
-        if tool_choice == "💰 Profit Calculator (New Crop)":
-            st.info("💡 **AI Suggestion:** Find out which crop will give you maximum money.")
+        if tool_choice == "💰 Profit Calculator":
             c1, c2 = st.columns(2)
             with c1: 
                 season = st.selectbox("Season", ["Kharif", "Rabi", "Zaid"])
@@ -245,11 +254,10 @@ def main():
                 with st.spinner("Analyzing Market..."):
                     prompt = f"Suggest 3 most profitable crops for Season: {season}, Location: {user_city}, Budget: {budget}, Water: {water}. Output in {target_lang}."
                     res = get_ai_response(prompt)
-                    st.markdown(f"<div class='feature-card' style='border-left: 5px solid #ff9933;'>{res}</div>", unsafe_allow_html=True)
+                    st.write(res)
                     speak_text("Here are the best crops for you.", voice_lang_code)
         
-        else: # WEEKLY PLANNER (RESTORED!)
-            st.info("📅 **Weekly Schedule:** Get a to-do list for your standing crop.")
+        else: 
             c1, c2 = st.columns(2)
             with c1: crop_name = st.text_input("Crop Name", "Sugarcane")
             with c2: sow_date = st.date_input("Sowing Date", datetime.date.today())
@@ -261,8 +269,9 @@ def main():
                 with st.spinner("Creating Plan..."):
                     prompt = f"Create a detailed weekly schedule for {crop_name} (Age: {days_old} days). Language: {target_lang}. Include fertilizer, water, and disease prevention."
                     res = get_ai_response(prompt)
-                    st.markdown(f"<div class='feature-card'>{res}</div>", unsafe_allow_html=True)
+                    st.write(res)
                     speak_text("I have created your weekly schedule.", voice_lang_code)
+        st.markdown('</div>', unsafe_allow_html=True)
 
     # === TAB 3: NEWS & SCHEMES ===
     with tabs[2]:
@@ -276,24 +285,37 @@ def main():
         if st.button("🔄 Refresh News"):
             with st.spinner("Fetching..."):
                 news_html = fetch_translated_news(target_lang)
-                st.markdown(news_html, unsafe_allow_html=True)
+                st.markdown(f"<div class='feature-card'>{news_html}</div>", unsafe_allow_html=True)
 
-    # === TAB 4: CHAT WITH VOICE ===
+    # === TAB 4: VOICE CHAT ===
     with tabs[3]:
         st.markdown(f"### 💬 Kisan Sahayak ({target_lang})")
+        st.markdown('<div class="feature-card">', unsafe_allow_html=True)
+        
         if "messages" not in st.session_state: st.session_state.messages = []
         for msg in st.session_state.messages:
             with st.chat_message(msg["role"]): st.markdown(msg["content"])
-            
-        if prompt := st.chat_input("Ask..."):
+        
+        st.write("🎤 **Speak (Tap):**")
+        audio_text = speech_to_text(language=voice_lang_code, start_prompt="🟢 Start", stop_prompt="🔴 Stop", just_once=True, key='STT')
+        
+        text_input = st.chat_input("...or type here")
+        
+        prompt = None
+        if audio_text: prompt = audio_text
+        elif text_input: prompt = text_input
+
+        if prompt:
             st.session_state.messages.append({"role": "user", "content": prompt})
             with st.chat_message("user"): st.markdown(prompt)
+            
             with st.chat_message("assistant"):
-                with st.spinner("..."):
+                with st.spinner("Thinking..."):
                     reply = get_ai_response(f"Reply in {target_lang}. Q: {prompt}")
                     st.markdown(reply)
                     st.session_state.messages.append({"role": "assistant", "content": reply})
                     speak_text(reply.replace("*", ""), voice_lang_code)
+        st.markdown('</div>', unsafe_allow_html=True)
 
 if __name__ == "__main__":
     main()
