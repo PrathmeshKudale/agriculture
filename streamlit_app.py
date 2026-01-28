@@ -25,35 +25,76 @@ if "WEATHER_API_KEY" in st.secrets:
 else:
     WEATHER_API_KEY = ""
 
-# --- 3. MODERN CSS ---
+# --- 3. NUCLEAR CSS FIX (FOR BLACK DROPDOWNS) ---
 st.markdown("""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap');
     
+    /* 1. FORCE APP BACKGROUND */
     .stApp { background-color: #f1f8e9 !important; font-family: 'Poppins', sans-serif; }
+    
+    /* 2. FORCE TEXT COLOR */
     h1, h2, h3, h4, h5, h6, p, div, span, label, li, .stMarkdown { color: #1a1a1a !important; }
 
-    /* DROPDOWN FIX */
+    /* --- NUCLEAR DROPDOWN FIX START --- */
+    /* This targets the exact "Black Box" in your screenshot */
+    
+    /* The main box you click */
+    div[data-baseweb="select"] > div {
+        background-color: #ffffff !important;
+        color: #000000 !important;
+        border: 1px solid #cccccc !important;
+    }
+    
+    /* The text inside the box */
+    div[data-baseweb="select"] span {
+        color: #000000 !important;
+    }
+    
+    /* The Popup Menu (The Black part in your image) */
     div[data-baseweb="popover"], div[data-baseweb="menu"], ul[data-baseweb="menu"] {
         background-color: #ffffff !important;
         border: 1px solid #cccccc !important;
     }
-    li[data-baseweb="option"] { background-color: #ffffff !important; color: #000000 !important; }
-    li[data-baseweb="option"]:hover { background-color: #e8f5e9 !important; }
-    div[data-baseweb="select"] > div { background-color: #ffffff !important; color: #000000 !important; border: 1px solid #ccc !important; }
     
-    /* CARDS & ANIMATIONS */
+    /* The Options inside the menu */
+    li[data-baseweb="option"] {
+        background-color: #ffffff !important;
+        color: #000000 !important;
+    }
+    
+    /* The text inside the options */
+    li[data-baseweb="option"] span {
+        color: #000000 !important;
+    }
+
+    /* Hover Effect (Green) */
+    li[data-baseweb="option"]:hover {
+        background-color: #e8f5e9 !important;
+        color: #000000 !important;
+    }
+    
+    /* Selected Option */
+    li[data-baseweb="option"][aria-selected="true"] {
+        background-color: #138808 !important;
+        color: #ffffff !important;
+    }
+    /* --- NUCLEAR DROPDOWN FIX END --- */
+
+    /* 3. CARD STYLING */
     .hero-container { background: white; border-bottom: 4px solid #ff9933; padding: 20px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); }
     .feature-card {
         background: white; border-radius: 16px; padding: 20px; 
         box-shadow: 0 4px 6px rgba(0,0,0,0.05); border: 1px solid #ffffff; margin-bottom: 15px;
     }
+    
+    /* 4. BUTTONS */
     .stButton>button {
         background: linear-gradient(to right, #138808, #0f6b06) !important;
         color: white !important; border-radius: 10px; border: none; font-weight: 600; width: 100%; padding: 12px;
     }
     
-    /* VOICE BOX ANIMATION */
+    /* 5. ANIMATIONS */
     @keyframes pulse-green {
         0% { box-shadow: 0 0 0 0 rgba(19, 136, 8, 0.4); }
         70% { box-shadow: 0 0 0 15px rgba(19, 136, 8, 0); }
@@ -69,7 +110,7 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# --- 4. OPTIMIZED FUNCTIONS (With Caching to Fix Quota Issues) ---
+# --- 4. FUNCTIONS (CRASH-PROOF) ---
 
 def speak_text(text, lang_code):
     js = f"""
@@ -102,10 +143,10 @@ def get_ai_response(prompt, image=None):
     try:
         model = genai.GenerativeModel(get_working_model())
         return model.generate_content([prompt, image] if image else prompt).text
-    except Exception as e: return f"⚠️ Server Limit Reached. Please wait 1 min. ({str(e)})"
+    except Exception as e: return f"⚠️ Server Busy. ({str(e)})"
 
-# CACHED NEWS: This prevents hitting the API limit on refresh
-@st.cache_data(ttl=3600) # Cache for 1 hour
+# CACHED NEWS (Prevents API Limits)
+@st.cache_data(ttl=3600)
 def fetch_translated_news(language):
     try:
         feed_url = "https://news.google.com/rss/search?q=India+Agriculture+Schemes&hl=en-IN&gl=IN&ceid=IN:en"
@@ -115,21 +156,18 @@ def fetch_translated_news(language):
         
         prompt = f"""
         Translate these headlines to {language}. 
-        IMPORTANT: Return ONLY valid HTML code. Do not use markdown ```html blocks.
+        Return ONLY valid HTML code.
         Format as: <div style='border-left:4px solid #138808; padding:10px; background:#f9f9f9; margin-bottom:10px;'><b>Headline</b><br><small>Summary</small></div>
         Input: {raw_text}
         """
         response_text = get_ai_response(prompt)
-        
-        # CLEANUP FIX: Remove markdown codes if the AI adds them
-        clean_text = response_text.replace("```html", "").replace("```", "")
-        return clean_text
+        return response_text.replace("```html", "").replace("```", "")
     except: return "News unavailable."
 
 def get_weather(city):
     if not WEATHER_API_KEY: return "Sunny", 32
     try:
-        url = f"[http://api.openweathermap.org/data/2.5/weather?q=](http://api.openweathermap.org/data/2.5/weather?q=){city}&appid={WEATHER_API_KEY}&units=metric"
+        url = f"http://api.openweathermap.org/data/2.5/weather?q={city}&appid={WEATHER_API_KEY}&units=metric"
         data = requests.get(url).json()
         return data['weather'][0]['main'], data['main']['temp']
     except: return "Clear", 28
@@ -198,7 +236,7 @@ def main():
                     st.markdown(f"<div class='feature-card'>{res}</div>", unsafe_allow_html=True)
                     speak_text(res.replace("*", ""), voice_lang_code)
 
-    # === TAB 2: SMART FARM (Simplified) ===
+    # === TAB 2: SMART FARM ===
     with tabs[1]:
         st.markdown(f"### 🌱 Smart Farm ({target_lang})")
         tool = st.radio("Select Tool:", ["💰 Profit Calculator", "📅 Weekly Planner"], horizontal=True)
@@ -207,11 +245,11 @@ def main():
         if "Profit" in tool:
             c1, c2 = st.columns(2)
             with c1: 
-                season = st.selectbox("Season / हंगाम", ["Kharif (Monsoon)", "Rabi (Winter)", "Zaid (Summer)"])
-                budget = st.selectbox("Budget / गुंतवणूक", ["Low (कमी)", "Medium (मध्यम)", "High (जास्त)"])
+                season = st.selectbox("Season", ["Kharif", "Rabi", "Zaid"])
+                budget = st.selectbox("Budget", ["Low", "Medium", "High"])
             with c2: 
-                water = st.selectbox("Water / पाणी", ["Rainfed (पाऊस)", "Well (विहीर)", "Irrigation (कॅनॉल)"])
-                land = st.text_input("Land / जमीन", "1 Acre")
+                water = st.selectbox("Water", ["Rainfed", "Well", "Irrigation"])
+                land = st.text_input("Land", "1 Acre")
             
             if st.button("🚀 Calculate Profit"):
                 with st.spinner("Analyzing..."):
@@ -231,7 +269,7 @@ def main():
                     res = get_ai_response(prompt)
                     st.markdown(f"<div class='feature-card'>{res}</div>", unsafe_allow_html=True)
 
-    # === TAB 3: SCHEMES (Fixed HTML News) ===
+    # === TAB 3: SCHEMES ===
     with tabs[2]:
         st.markdown("### 🏛️ Schemes")
         cols = st.columns(2)
@@ -245,7 +283,7 @@ def main():
                 news_html = fetch_translated_news(target_lang)
                 st.markdown(news_html, unsafe_allow_html=True)
 
-    # === TAB 4: 3D VOICE CHAT ===
+    # === TAB 4: VOICE CHAT (CRASH PROOF) ===
     with tabs[3]:
         st.markdown(f"### 💬 Voice Assistant")
         
@@ -256,11 +294,11 @@ def main():
         st.markdown("""
             <div class="voice-box">
                 <h3 style="color:#138808; margin:0;">🎙️ Tap Below to Speak</h3>
-                <p style="color:#666; font-size:12px;">(बोलण्यासाठी खालील बटण दाबा)</p>
             </div>
         """, unsafe_allow_html=True)
 
-        # SAFE IMPORT (Fixes 'ModuleNotFound' crash)
+        # --- THE CRASH FIX IS HERE ---
+        # We try to import INSIDE the function. If it fails, we show a warning instead of crashing.
         try:
             from streamlit_mic_recorder import speech_to_text
             audio_text = speech_to_text(
@@ -270,8 +308,11 @@ def main():
                 just_once=True,
                 key='STT_KEY'
             )
-        except:
-            st.warning("⚠️ Microphone library missing. Use text input.")
+        except ImportError:
+            st.warning("⚠️ Voice Module Missing. Check requirements.txt or use text input.")
+            audio_text = None
+        except Exception:
+            st.warning("⚠️ Microphone not active. Use text input.")
             audio_text = None
         
         text_input = st.chat_input("...or type here")
