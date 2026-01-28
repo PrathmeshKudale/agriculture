@@ -2,8 +2,8 @@ import streamlit as st
 import requests
 import feedparser
 import datetime
+import google.generativeai as genai
 import json
-import time
 
 # --- 1. CONFIGURATION ---
 st.set_page_config(
@@ -13,188 +13,280 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# --- 2. DEMO MODE SETTINGS (CRITICAL FOR PRESENTATION) ---
-# Set this to True to guarantee NO API ERRORS during your pitch.
-DEMO_MODE = True 
+# --- 2. KEYS ---
+if "GOOGLE_API_KEY" in st.secrets:
+    GOOGLE_API_KEY = st.secrets["GOOGLE_API_KEY"]
+    genai.configure(api_key=GOOGLE_API_KEY)
+else:
+    GOOGLE_API_KEY = ""
 
-# --- 3. NUCLEAR CSS FIX (Fixes Black Dropdown & Raw Code) ---
+if "WEATHER_API_KEY" in st.secrets:
+    WEATHER_API_KEY = st.secrets["WEATHER_API_KEY"]
+else:
+    WEATHER_API_KEY = ""
+
+# --- 3. MODERN CSS ---
 st.markdown("""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap');
     
-    /* Force Light Theme Colors */
     .stApp { background-color: #f1f8e9 !important; font-family: 'Poppins', sans-serif; }
     h1, h2, h3, h4, h5, h6, p, div, span, label, li, .stMarkdown { color: #1a1a1a !important; }
 
-    /* --- DROPDOWN FIX (From your screenshot) --- */
-    div[data-baseweb="select"] > div { background-color: #ffffff !important; color: #000000 !important; border: 1px solid #cccccc !important; }
-    div[data-baseweb="select"] span { color: #000000 !important; }
-    div[data-baseweb="popover"], div[data-baseweb="menu"], ul[data-baseweb="menu"] { background-color: #ffffff !important; }
+    /* DROPDOWN FIX */
+    div[data-baseweb="popover"], div[data-baseweb="menu"], ul[data-baseweb="menu"] {
+        background-color: #ffffff !important;
+        border: 1px solid #cccccc !important;
+    }
     li[data-baseweb="option"] { background-color: #ffffff !important; color: #000000 !important; }
-    li[data-baseweb="option"]:hover { background-color: #e8f5e9 !important; color: #000000 !important; }
-    li[data-baseweb="option"][aria-selected="true"] { background-color: #138808 !important; color: #ffffff !important; }
-
-    /* Card Styling */
-    .feature-card { background: white; border-radius: 12px; padding: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); margin-bottom: 15px; border: 1px solid #e0e0e0; }
-    .stButton>button { background: linear-gradient(to right, #138808, #0f6b06) !important; color: white !important; border-radius: 8px; border: none; font-weight: 600; width: 100%; padding: 12px; }
+    li[data-baseweb="option"]:hover { background-color: #e8f5e9 !important; }
+    div[data-baseweb="select"] > div { background-color: #ffffff !important; color: #000000 !important; border: 1px solid #ccc !important; }
     
-    /* Animation */
-    @keyframes pulse-green { 0% { box-shadow: 0 0 0 0 rgba(19, 136, 8, 0.4); } 70% { box-shadow: 0 0 0 15px rgba(19, 136, 8, 0); } 100% { box-shadow: 0 0 0 0 rgba(19, 136, 8, 0); } }
-    .voice-box { background: white; border: 2px solid #138808; border-radius: 20px; padding: 20px; text-align: center; animation: pulse-green 2s infinite; margin-bottom: 20px; }
+    /* CARDS & ANIMATIONS */
+    .hero-container { background: white; border-bottom: 4px solid #ff9933; padding: 20px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); }
+    .feature-card {
+        background: white; border-radius: 16px; padding: 20px; 
+        box-shadow: 0 4px 6px rgba(0,0,0,0.05); border: 1px solid #ffffff; margin-bottom: 15px;
+    }
+    .stButton>button {
+        background: linear-gradient(to right, #138808, #0f6b06) !important;
+        color: white !important; border-radius: 10px; border: none; font-weight: 600; width: 100%; padding: 12px;
+    }
+    
+    /* VOICE BOX ANIMATION */
+    @keyframes pulse-green {
+        0% { box-shadow: 0 0 0 0 rgba(19, 136, 8, 0.4); }
+        70% { box-shadow: 0 0 0 15px rgba(19, 136, 8, 0); }
+        100% { box-shadow: 0 0 0 0 rgba(19, 136, 8, 0); }
+    }
+    .voice-box {
+        background: white; border: 2px solid #138808; border-radius: 20px; padding: 20px;
+        text-align: center; animation: pulse-green 2s infinite; margin-bottom: 20px;
+    }
     
     #MainMenu, header, footer { visibility: hidden; }
     .block-container { padding-top: 0rem; padding-bottom: 5rem; }
     </style>
 """, unsafe_allow_html=True)
 
-# --- 4. THE "MAGIC" FUNCTIONS (Solves Error 429 & Raw HTML) ---
+# --- 4. OPTIMIZED FUNCTIONS (With Caching to Fix Quota Issues) ---
 
-def get_perfect_response(request_type):
-    """Returns pre-written, perfect answers so you never fail on stage."""
-    time.sleep(1.5) # Fake thinking time to look real
-    
-    if request_type == "disease":
-        # Solves Image_db1e9b.png raw text issue
-        return """
-        <h3>🍂 Disease Detected: Anthracnose (Guava)</h3>
-        <p><b>Severity:</b> Moderate</p>
-        <div style="background-color: #e8f5e9; padding: 10px; border-radius: 5px;">
-            <b>🌱 Organic Remedy:</b><br>
-            • Prune and burn infected branches immediately.<br>
-            • Spray <b>Neem Oil (3%)</b> every 10 days.
-        </div>
-        <div style="background-color: #ffebee; padding: 10px; border-radius: 5px; margin-top: 10px;">
-            <b>🧪 Chemical Remedy:</b><br>
-            • Spray Copper Oxychloride (3g/liter) or Carbendazim.
-        </div>
-        """
-        
-    elif request_type == "news":
-        # Solves Image_227922.png raw HTML issue
-        return """
-        <div class="feature-card" style="border-left: 5px solid #138808;">
-            <h4 style="margin:0;">📢 PM-KISAN Update</h4>
-            <p style="font-size:14px; color:#555;">16th Installment of ₹2,000 released directly to bank accounts.</p>
-        </div>
-        <div class="feature-card" style="border-left: 5px solid #ff9933;">
-            <h4 style="margin:0;">🚁 Drone Subsidy Scheme</h4>
-            <p style="font-size:14px; color:#555;">Govt announces 50% subsidy for SC/ST farmers to buy agricultural drones.</p>
-        </div>
-        """
-    
-    elif request_type == "profit":
-        return """
-        <div class="feature-card" style="border-left: 5px solid #ff9933;">
-            <h3>💰 Recommended Crop: Marigold</h3>
-            <p><b>Why?</b> High demand in upcoming festive season.</p>
-            <ul>
-                <li><b>Investment:</b> ₹15,000 / acre</li>
-                <li><b>Est. Profit:</b> ₹65,000 / acre</li>
-                <li><b>Duration:</b> 3 Months</li>
-            </ul>
-        </div>
-        """
-        
-    return "I am GreenMitra. How can I help?"
-
-def speak_text(text, lang='en'):
-    # Fake voice response for demo
+def speak_text(text, lang_code):
     js = f"""
     <script>
+        var msg = new SpeechSynthesisUtterance();
+        msg.text = {json.dumps(text)};
+        msg.lang = '{lang_code}';
         window.speechSynthesis.cancel();
-        var msg = new SpeechSynthesisUtterance("Analysis complete. Please check the screen.");
-        msg.lang = 'en-IN';
         window.speechSynthesis.speak(msg);
     </script>
     """
     st.components.v1.html(js, height=0, width=0)
 
 PERMANENT_SCHEMES = [
-    {"name": "PM-KISAN", "desc": "₹6000/Year Support", "link": "#"},
-    {"name": "PMFBY", "desc": "Crop Insurance", "link": "#"},
-    {"name": "KCC Loan", "desc": "Kisan Credit Card", "link": "#"},
-    {"name": "e-NAM", "desc": "Sell Online", "link": "#"},
+    {"name": "PM-KISAN", "desc": "₹6,000/year income support for all landholding farmers.", "link": "https://pmkisan.gov.in/"},
+    {"name": "PMFBY (Insurance)", "desc": "Crop insurance scheme with lowest premium rates.", "link": "https://pmfby.gov.in/"},
+    {"name": "Kisan Credit Card", "desc": "Low interest loans (4%) for farming needs.", "link": "https://pib.gov.in/"},
+    {"name": "e-NAM Market", "desc": "Online trading platform to sell crops for better prices.", "link": "https://enam.gov.in/"},
+    {"name": "Soil Health Card", "desc": "Free soil testing reports to check fertilizer needs.", "link": "https://soilhealth.dac.gov.in/"},
+    {"name": "PM-KUSUM", "desc": "Subsidy for installing Solar Pumps on farms.", "link": "https://pmkusum.mnre.gov.in/"}
 ]
 
-# --- 5. MAIN APP UI ---
+def get_working_model():
+    try:
+        models = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
+        return next((m for m in models if 'flash' in m), "models/gemini-1.5-flash")
+    except: return "models/gemini-1.5-flash"
+
+def get_ai_response(prompt, image=None):
+    try:
+        model = genai.GenerativeModel(get_working_model())
+        return model.generate_content([prompt, image] if image else prompt).text
+    except Exception as e: return f"⚠️ Server Limit Reached. Please wait 1 min. ({str(e)})"
+
+# CACHED NEWS: This prevents hitting the API limit on refresh
+@st.cache_data(ttl=3600) # Cache for 1 hour
+def fetch_translated_news(language):
+    try:
+        feed_url = "https://news.google.com/rss/search?q=India+Agriculture+Schemes&hl=en-IN&gl=IN&ceid=IN:en"
+        feed = feedparser.parse(feed_url)
+        headlines = [f"- {e.title}" for e in feed.entries[:4]]
+        raw_text = "\n".join(headlines)
+        
+        prompt = f"""
+        Translate these headlines to {language}. 
+        IMPORTANT: Return ONLY valid HTML code. Do not use markdown ```html blocks.
+        Format as: <div style='border-left:4px solid #138808; padding:10px; background:#f9f9f9; margin-bottom:10px;'><b>Headline</b><br><small>Summary</small></div>
+        Input: {raw_text}
+        """
+        response_text = get_ai_response(prompt)
+        
+        # CLEANUP FIX: Remove markdown codes if the AI adds them
+        clean_text = response_text.replace("```html", "").replace("```", "")
+        return clean_text
+    except: return "News unavailable."
+
+def get_weather(city):
+    if not WEATHER_API_KEY: return "Sunny", 32
+    try:
+        url = f"[http://api.openweathermap.org/data/2.5/weather?q=](http://api.openweathermap.org/data/2.5/weather?q=){city}&appid={WEATHER_API_KEY}&units=metric"
+        data = requests.get(url).json()
+        return data['weather'][0]['main'], data['main']['temp']
+    except: return "Clear", 28
+
+# --- 5. MAIN APP ---
 def main():
     if "show_camera" not in st.session_state: st.session_state.show_camera = False
 
-    # Header
+    # --- HERO HEADER ---
     col1, col2 = st.columns([1, 5])
-    with col1: st.write("🌾") 
+    with col1:
+        try: st.image("logo.jpg", width=130) 
+        except: st.write("🌾")
     with col2:
         st.markdown("""
-            <div style="padding-top: 10px;">
-                <h1 style='color:#138808 !important; margin:0;'>GreenMitra AI</h1>
-                <p style='color:#666 !important;'>Presentation Mode: Active</p>
+            <div style="padding-top: 25px;">
+                <h1 style='font-size:32px; margin:0; line-height:1; color:#138808 !important;'>GreenMitra AI</h1>
+                <p style='font-size:14px; margin:0; color:#555 !important;'>India's Advanced Kisan Assistant</p>
             </div>
         """, unsafe_allow_html=True)
 
-    # Settings Bar
+    st.write("---")
+
+    # --- SETTINGS ---
     with st.container():
         c1, c2, c3 = st.columns([2, 1, 1])
-        with c1: st.selectbox("Language", ["English", "Marathi", "Hindi"])
-        with c2: st.text_input("Village", "Kolhapur")
-        with c3: st.markdown("<div style='background:white; padding:10px; border-radius:8px; text-align:center;'><b>32°C</b><br>Sunny</div>", unsafe_allow_html=True)
+        with c1: 
+            lang_map = {
+                "English": "en-IN", "Marathi (मराठी)": "mr-IN", "Hindi (हिंदी)": "hi-IN",
+                "Tamil (தமிழ்)": "ta-IN", "Telugu (తెలుగు)": "te-IN", "Kannada (ಕನ್ನಡ)": "kn-IN",
+                "Gujarati (ગુજરાતી)": "gu-IN"
+            }
+            sel_lang_key = st.selectbox("Select Language / भाषा", list(lang_map.keys()))
+            target_lang = sel_lang_key
+            voice_lang_code = lang_map[sel_lang_key]
+            
+        with c2: user_city = st.text_input("Village / गाव", "Kolhapur")
+        with c3: 
+            w_cond, w_temp = get_weather(user_city)
+            st.markdown(f"<div style='background:white; padding:8px; border-radius:8px; text-align:center; margin-top:28px;'><b>{w_temp}°C</b><br>{w_cond}</div>", unsafe_allow_html=True)
 
-    # Tabs
+    # --- TABS ---
     tabs = st.tabs(["🩺 Doctor", "🌱 Smart Farm", "📰 Yojana", "💬 Voice Chat"])
 
-    # === TAB 1: DOCTOR (Solves Error 429) ===
+    # === TAB 1: CROP DOCTOR ===
     with tabs[0]:
-        st.markdown("### 🩺 Crop Diagnosis")
-        c1, c2 = st.columns([1,1])
-        with c1: uploaded_file = st.file_uploader("Upload Leaf", type=['jpg','png'])
-        with c2: st.info("📸 Camera is disabled for smooth demo")
+        st.markdown(f"### 🩺 Crop Health ({target_lang})")
+        c1, c2 = st.columns([1, 1])
+        with c1: uploaded_file = st.file_uploader("Select File", type=['jpg','png'], label_visibility="collapsed")
+        with c2:
+            if not st.session_state.show_camera:
+                if st.button("📸 Open Camera"): st.session_state.show_camera = True; st.rerun()
+            else:
+                cam_file = st.camera_input("Scan")
+                if st.button("❌ Close"): st.session_state.show_camera = False; st.rerun()
+                if cam_file: uploaded_file = cam_file
 
         if uploaded_file:
-            st.image(uploaded_file, width=200)
-            if st.button("🔍 Diagnose Disease"):
-                with st.spinner("Scanning..."):
-                    # Calls the FAKE function -> No API Limit Error!
-                    response = get_perfect_response("disease") 
-                    st.markdown(response, unsafe_allow_html=True)
-                    speak_text("Done")
+            st.image(uploaded_file, width=150)
+            if st.button("🔍 Diagnose & Speak"):
+                with st.spinner(f"Analyzing in {target_lang}..."):
+                    img_bytes = uploaded_file.getvalue()
+                    prompt = f"Identify crop disease. Suggest Organic & Chemical remedy. OUTPUT IN {target_lang}. Keep it short."
+                    res = get_ai_response(prompt, {"mime_type": "image/jpeg", "data": img_bytes})
+                    st.success("Complete")
+                    st.markdown(f"<div class='feature-card'>{res}</div>", unsafe_allow_html=True)
+                    speak_text(res.replace("*", ""), voice_lang_code)
 
-    # === TAB 2: SMART FARM ===
+    # === TAB 2: SMART FARM (Simplified) ===
     with tabs[1]:
-        st.markdown("### 🌱 Profit Calculator")
-        c1, c2 = st.columns(2)
-        with c1: st.selectbox("Season", ["Rabi", "Kharif"])
-        with c2: st.selectbox("Budget", ["Low", "High"])
-        
-        if st.button("🚀 Calculate Best Crop"):
-            with st.spinner("Analyzing Market..."):
-                response = get_perfect_response("profit")
-                st.markdown(response, unsafe_allow_html=True)
-                speak_text("Done")
+        st.markdown(f"### 🌱 Smart Farm ({target_lang})")
+        tool = st.radio("Select Tool:", ["💰 Profit Calculator", "📅 Weekly Planner"], horizontal=True)
+        st.markdown("---")
 
-    # === TAB 3: SCHEMES (Solves Raw HTML Issue) ===
+        if "Profit" in tool:
+            c1, c2 = st.columns(2)
+            with c1: 
+                season = st.selectbox("Season / हंगाम", ["Kharif (Monsoon)", "Rabi (Winter)", "Zaid (Summer)"])
+                budget = st.selectbox("Budget / गुंतवणूक", ["Low (कमी)", "Medium (मध्यम)", "High (जास्त)"])
+            with c2: 
+                water = st.selectbox("Water / पाणी", ["Rainfed (पाऊस)", "Well (विहीर)", "Irrigation (कॅनॉल)"])
+                land = st.text_input("Land / जमीन", "1 Acre")
+            
+            if st.button("🚀 Calculate Profit"):
+                with st.spinner("Analyzing..."):
+                    prompt = f"Suggest 3 most profitable crops for Season: {season}, Location: {user_city}, Budget: {budget}, Water: {water}. Output in {target_lang}."
+                    res = get_ai_response(prompt)
+                    st.markdown(f"<div class='feature-card' style='border-left:5px solid #ff9933'>{res}</div>", unsafe_allow_html=True)
+                    speak_text("Here is the profit plan.", voice_lang_code)
+        else:
+            c1, c2 = st.columns(2)
+            with c1: crop_name = st.text_input("Crop Name", "Sugarcane")
+            with c2: sow_date = st.date_input("Sowing Date", datetime.date.today())
+            
+            if st.button("📝 Create Schedule"):
+                with st.spinner("Creating Plan..."):
+                    days_old = (datetime.date.today() - sow_date).days
+                    prompt = f"Create weekly schedule for {crop_name} (Age: {days_old} days). Language: {target_lang}."
+                    res = get_ai_response(prompt)
+                    st.markdown(f"<div class='feature-card'>{res}</div>", unsafe_allow_html=True)
+
+    # === TAB 3: SCHEMES (Fixed HTML News) ===
     with tabs[2]:
-        st.markdown("### 📰 Latest Updates")
-        if st.button("🔄 Refresh News"):
-            with st.spinner("Fetching..."):
-                response = get_perfect_response("news")
-                # correctly renders HTML now
-                st.markdown(response, unsafe_allow_html=True) 
+        st.markdown("### 🏛️ Schemes")
+        cols = st.columns(2)
+        for i, scheme in enumerate(PERMANENT_SCHEMES):
+            with cols[i % 2]:
+                st.markdown(f"<div class='feature-card' style='padding:10px; text-align:center;'><b>{scheme['name']}</b><br><a href='{scheme['link']}'>View</a></div>", unsafe_allow_html=True)
         
         st.write("---")
-        cols = st.columns(2)
-        for i, s in enumerate(PERMANENT_SCHEMES):
-            with cols[i%2]:
-                st.info(f"**{s['name']}**\n\n{s['desc']}")
+        if st.button("🔄 Get Latest News"):
+            with st.spinner("Fetching..."):
+                news_html = fetch_translated_news(target_lang)
+                st.markdown(news_html, unsafe_allow_html=True)
 
-    # === TAB 4: VOICE CHAT ===
+    # === TAB 4: 3D VOICE CHAT ===
     with tabs[3]:
-        st.markdown("### 💬 Voice Assistant")
-        st.markdown("""<div class="voice-box"><h3>🎙️ Tap to Speak</h3></div>""", unsafe_allow_html=True)
+        st.markdown(f"### 💬 Voice Assistant")
         
-        user_input = st.chat_input("Type here...")
-        if user_input:
-            st.chat_message("user").write(user_input)
-            st.chat_message("assistant").write("This is a demo response. The AI is working perfectly.")
-            speak_text("Demo")
+        if "messages" not in st.session_state: st.session_state.messages = []
+        for msg in st.session_state.messages:
+            with st.chat_message(msg["role"]): st.markdown(msg["content"])
+        
+        st.markdown("""
+            <div class="voice-box">
+                <h3 style="color:#138808; margin:0;">🎙️ Tap Below to Speak</h3>
+                <p style="color:#666; font-size:12px;">(बोलण्यासाठी खालील बटण दाबा)</p>
+            </div>
+        """, unsafe_allow_html=True)
+
+        # SAFE IMPORT (Fixes 'ModuleNotFound' crash)
+        try:
+            from streamlit_mic_recorder import speech_to_text
+            audio_text = speech_to_text(
+                language=voice_lang_code,
+                start_prompt="🟢 START",
+                stop_prompt="🔴 STOP",
+                just_once=True,
+                key='STT_KEY'
+            )
+        except:
+            st.warning("⚠️ Microphone library missing. Use text input.")
+            audio_text = None
+        
+        text_input = st.chat_input("...or type here")
+        prompt = audio_text if audio_text else text_input
+
+        if prompt:
+            st.session_state.messages.append({"role": "user", "content": prompt})
+            with st.chat_message("user"): st.markdown(prompt)
+            
+            with st.chat_message("assistant"):
+                with st.spinner("Thinking..."):
+                    reply = get_ai_response(f"Reply in {target_lang}. Q: {prompt}")
+                    st.markdown(reply)
+                    st.session_state.messages.append({"role": "assistant", "content": reply})
+                    speak_text(reply.replace("*", ""), voice_lang_code)
 
 if __name__ == "__main__":
     main()
