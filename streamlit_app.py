@@ -1,292 +1,216 @@
 import streamlit as st
+import pymongo
+import google.generativeai as genai
 import requests
 import feedparser
 import datetime
-import google.generativeai as genai
+import time
 import json
 
 # --- 1. CONFIGURATION ---
 st.set_page_config(
-    page_title="GreenMitra (Kisan)",
+    page_title="GreenMitra Pro",
     page_icon="🇮🇳",
     layout="wide",
     initial_sidebar_state="collapsed"
 )
 
-# --- 2. KEYS ---
+# --- 2. CONNECT TO DATABASE & AI ---
+
+# Setup AI
 if "GOOGLE_API_KEY" in st.secrets:
-    GOOGLE_API_KEY = st.secrets["GOOGLE_API_KEY"]
-    genai.configure(api_key=GOOGLE_API_KEY)
-else:
-    GOOGLE_API_KEY = ""
+    genai.configure(api_key=st.secrets["GOOGLE_API_KEY"])
 
-if "WEATHER_API_KEY" in st.secrets:
-    WEATHER_API_KEY = st.secrets["WEATHER_API_KEY"]
-else:
-    WEATHER_API_KEY = ""
+# Setup Database (With Error Handling)
+@st.cache_resource
+def init_connection():
+    try:
+        return pymongo.MongoClient(st.secrets["mongo"]["uri"])
+    except Exception as e:
+        return None
 
-# --- 3. MODERN CSS ---
+client = init_connection()
+
+# --- 3. DATABASE FUNCTIONS (Login Logic) ---
+
+def login_user(phone):
+    """Finds a user by phone number"""
+    if client:
+        db = client["GreenMitra_DB"]
+        # .strip() removes accidental spaces!
+        clean_phone = str(phone).strip()
+        return db["farmers_data"].find_one({"phone": clean_phone})
+    return None
+
+def register_user(name, phone, village):
+    """Creates a new user"""
+    if client:
+        db = client["GreenMitra_DB"]
+        users = db["farmers_data"]
+        # .strip() removes accidental spaces!
+        clean_phone = str(phone).strip()
+        
+        # Check if already registered
+        if users.find_one({"phone": clean_phone}):
+            return False
+            
+        # Create new account
+        users.insert_one({
+            "name": name, 
+            "phone": clean_phone, 
+            "village": village, 
+            "joined": time.strftime("%Y-%m-%d")
+        })
+        return True
+    return False
+
+def save_history(phone, action, details):
+    """Saves farmer activity to history"""
+    if client:
+        db = client["GreenMitra_DB"]
+        db["history"].insert_one({
+            "phone": phone,
+            "action": action,
+            "details": details,
+            "date": time.strftime("%Y-%m-%d")
+        })
+
+# --- 4. AI & HELPER FUNCTIONS ---
+
+def get_ai_response(prompt):
+    try:
+        model = genai.GenerativeModel("gemini-1.5-flash")
+        return model.generate_content(prompt).text
+    except: return "⚠️ AI is busy. Please try again."
+
+def speak_text(text, lang='en-IN'):
+    js = f"""<script>
+        window.speechSynthesis.cancel();
+        var msg = new SpeechSynthesisUtterance({json.dumps(text)});
+        msg.lang = '{lang}';
+        window.speechSynthesis.speak(msg);
+    </script>"""
+    st.components.v1.html(js, height=0, width=0)
+
+# --- 5. STYLE ---
 st.markdown("""
     <style>
-    @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap');
-    
-    .stApp { background-color: #f1f8e9 !important; font-family: 'Poppins', sans-serif; }
-    h1, h2, h3, h4, h5, h6, p, div, span, label, li, .stMarkdown { color: #1a1a1a !important; }
-
-    /* DROPDOWN FIX */
-    div[data-baseweb="popover"], div[data-baseweb="menu"], ul[data-baseweb="menu"] {
-        background-color: #ffffff !important;
-        border: 1px solid #cccccc !important;
-    }
-    li[data-baseweb="option"] { background-color: #ffffff !important; color: #000000 !important; }
-    li[data-baseweb="option"]:hover { background-color: #e8f5e9 !important; }
-    div[data-baseweb="select"] > div { background-color: #ffffff !important; color: #000000 !important; border: 1px solid #ccc !important; }
-    
-    /* CARDS & ANIMATIONS */
-    .hero-container { background: white; border-bottom: 4px solid #ff9933; padding: 20px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); }
-    .feature-card {
-        background: white; border-radius: 16px; padding: 20px; 
-        box-shadow: 0 4px 6px rgba(0,0,0,0.05); border: 1px solid #ffffff; margin-bottom: 15px;
-    }
-    .stButton>button {
-        background: linear-gradient(to right, #138808, #0f6b06) !important;
-        color: white !important; border-radius: 10px; border: none; font-weight: 600; width: 100%; padding: 12px;
-    }
-    
-    /* VOICE BOX ANIMATION */
-    @keyframes pulse-green {
-        0% { box-shadow: 0 0 0 0 rgba(19, 136, 8, 0.4); }
-        70% { box-shadow: 0 0 0 15px rgba(19, 136, 8, 0); }
-        100% { box-shadow: 0 0 0 0 rgba(19, 136, 8, 0); }
-    }
-    .voice-box {
-        background: white; border: 2px solid #138808; border-radius: 20px; padding: 20px;
-        text-align: center; animation: pulse-green 2s infinite; margin-bottom: 20px;
-    }
-    
-    #MainMenu, header, footer { visibility: hidden; }
-    .block-container { padding-top: 0rem; padding-bottom: 5rem; }
+    .stApp { background-color: #f1f8e9; }
+    .feature-card { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); margin-bottom: 10px; }
+    .stButton>button { width: 100%; background-color: #138808; color: white; border-radius: 8px; }
     </style>
 """, unsafe_allow_html=True)
 
-# --- 4. OPTIMIZED FUNCTIONS (With Caching to Fix Quota Issues) ---
+# --- 6. MAIN APP FLOW ---
 
-def speak_text(text, lang_code):
-    js = f"""
-    <script>
-        var msg = new SpeechSynthesisUtterance();
-        msg.text = {json.dumps(text)};
-        msg.lang = '{lang_code}';
-        window.speechSynthesis.cancel();
-        window.speechSynthesis.speak(msg);
-    </script>
-    """
-    st.components.v1.html(js, height=0, width=0)
+# Initialize Session
+if 'user' not in st.session_state: st.session_state.user = None
 
-PERMANENT_SCHEMES = [
-    {"name": "PM-KISAN", "desc": "₹6,000/year income support for all landholding farmers.", "link": "https://pmkisan.gov.in/"},
-    {"name": "PMFBY (Insurance)", "desc": "Crop insurance scheme with lowest premium rates.", "link": "https://pmfby.gov.in/"},
-    {"name": "Kisan Credit Card", "desc": "Low interest loans (4%) for farming needs.", "link": "https://pib.gov.in/"},
-    {"name": "e-NAM Market", "desc": "Online trading platform to sell crops for better prices.", "link": "https://enam.gov.in/"},
-    {"name": "Soil Health Card", "desc": "Free soil testing reports to check fertilizer needs.", "link": "https://soilhealth.dac.gov.in/"},
-    {"name": "PM-KUSUM", "desc": "Subsidy for installing Solar Pumps on farms.", "link": "https://pmkusum.mnre.gov.in/"}
-]
-
-def get_working_model():
-    try:
-        models = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
-        return next((m for m in models if 'flash' in m), "models/gemini-1.5-flash")
-    except: return "models/gemini-1.5-flash"
-
-def get_ai_response(prompt, image=None):
-    try:
-        model = genai.GenerativeModel(get_working_model())
-        return model.generate_content([prompt, image] if image else prompt).text
-    except Exception as e: return f"⚠️ Server Limit Reached. Please wait 1 min. ({str(e)})"
-
-# CACHED NEWS: This prevents hitting the API limit on refresh
-@st.cache_data(ttl=3600) # Cache for 1 hour
-def fetch_translated_news(language):
-    try:
-        feed_url = "https://news.google.com/rss/search?q=India+Agriculture+Schemes&hl=en-IN&gl=IN&ceid=IN:en"
-        feed = feedparser.parse(feed_url)
-        headlines = [f"- {e.title}" for e in feed.entries[:4]]
-        raw_text = "\n".join(headlines)
+# === SCENE 1: LOGIN PAGE ===
+if st.session_state.user is None:
+    st.title("🌾 GreenMitra Pro")
+    st.info("Please Login to access the AI Tools.")
+    
+    tab1, tab2 = st.tabs(["🔐 Login", "📝 Register New Farmer"])
+    
+    # LOGIN TAB
+    with tab1:
+        st.subheader("Login")
+        l_phone = st.text_input("Enter Mobile Number", key="login_phone")
         
-        prompt = f"""
-        Translate these headlines to {language}. 
-        IMPORTANT: Return ONLY valid HTML code. Do not use markdown ```html blocks.
-        Format as: <div style='border-left:4px solid #138808; padding:10px; background:#f9f9f9; margin-bottom:10px;'><b>Headline</b><br><small>Summary</small></div>
-        Input: {raw_text}
-        """
-        response_text = get_ai_response(prompt)
-        
-        # CLEANUP FIX: Remove markdown codes if the AI adds them
-        clean_text = response_text.replace("```html", "").replace("```", "")
-        return clean_text
-    except: return "News unavailable."
-
-def get_weather(city):
-    if not WEATHER_API_KEY: return "Sunny", 32
-    try:
-        url = f"[http://api.openweathermap.org/data/2.5/weather?q=](http://api.openweathermap.org/data/2.5/weather?q=){city}&appid={WEATHER_API_KEY}&units=metric"
-        data = requests.get(url).json()
-        return data['weather'][0]['main'], data['main']['temp']
-    except: return "Clear", 28
-
-# --- 5. MAIN APP ---
-def main():
-    if "show_camera" not in st.session_state: st.session_state.show_camera = False
-
-    # --- HERO HEADER ---
-    col1, col2 = st.columns([1, 5])
-    with col1:
-        try: st.image("logo.jpg", width=130) 
-        except: st.write("🌾")
-    with col2:
-        st.markdown("""
-            <div style="padding-top: 25px;">
-                <h1 style='font-size:32px; margin:0; line-height:1; color:#138808 !important;'>GreenMitra AI</h1>
-                <p style='font-size:14px; margin:0; color:#555 !important;'>India's Advanced Kisan Assistant</p>
-            </div>
-        """, unsafe_allow_html=True)
-
-    st.write("---")
-
-    # --- SETTINGS ---
-    with st.container():
-        c1, c2, c3 = st.columns([2, 1, 1])
-        with c1: 
-            lang_map = {
-                "English": "en-IN", "Marathi (मराठी)": "mr-IN", "Hindi (हिंदी)": "hi-IN",
-                "Tamil (தமிழ்)": "ta-IN", "Telugu (తెలుగు)": "te-IN", "Kannada (ಕನ್ನಡ)": "kn-IN",
-                "Gujarati (ગુજરાતી)": "gu-IN"
-            }
-            sel_lang_key = st.selectbox("Select Language / भाषा", list(lang_map.keys()))
-            target_lang = sel_lang_key
-            voice_lang_code = lang_map[sel_lang_key]
-            
-        with c2: user_city = st.text_input("Village / गाव", "Kolhapur")
-        with c3: 
-            w_cond, w_temp = get_weather(user_city)
-            st.markdown(f"<div style='background:white; padding:8px; border-radius:8px; text-align:center; margin-top:28px;'><b>{w_temp}°C</b><br>{w_cond}</div>", unsafe_allow_html=True)
-
-    # --- TABS ---
-    tabs = st.tabs(["🩺 Doctor", "🌱 Smart Farm", "📰 Yojana", "💬 Voice Chat"])
-
-    # === TAB 1: CROP DOCTOR ===
-    with tabs[0]:
-        st.markdown(f"### 🩺 Crop Health ({target_lang})")
-        c1, c2 = st.columns([1, 1])
-        with c1: uploaded_file = st.file_uploader("Select File", type=['jpg','png'], label_visibility="collapsed")
-        with c2:
-            if not st.session_state.show_camera:
-                if st.button("📸 Open Camera"): st.session_state.show_camera = True; st.rerun()
+        if st.button("Login"):
+            user = login_user(l_phone)
+            if user:
+                st.session_state.user = user
+                st.success("✅ Success! Loading...")
+                time.sleep(1)
+                st.rerun()
             else:
-                cam_file = st.camera_input("Scan")
-                if st.button("❌ Close"): st.session_state.show_camera = False; st.rerun()
-                if cam_file: uploaded_file = cam_file
+                st.error("❌ User not found. Please Register first.")
 
-        if uploaded_file:
-            st.image(uploaded_file, width=150)
-            if st.button("🔍 Diagnose & Speak"):
-                with st.spinner(f"Analyzing in {target_lang}..."):
-                    img_bytes = uploaded_file.getvalue()
-                    prompt = f"Identify crop disease. Suggest Organic & Chemical remedy. OUTPUT IN {target_lang}. Keep it short."
-                    res = get_ai_response(prompt, {"mime_type": "image/jpeg", "data": img_bytes})
-                    st.success("Complete")
-                    st.markdown(f"<div class='feature-card'>{res}</div>", unsafe_allow_html=True)
-                    speak_text(res.replace("*", ""), voice_lang_code)
+    # REGISTER TAB
+    with tab2:
+        st.subheader("New Registration")
+        r_name = st.text_input("Full Name")
+        r_phone = st.text_input("Mobile Number", key="reg_phone")
+        r_village = st.text_input("Village Name")
+        
+        if st.button("Register"):
+            if r_name and r_phone:
+                success = register_user(r_name, r_phone, r_village)
+                if success:
+                    st.success("✅ Account Created! Go to Login tab.")
+                else:
+                    st.warning("⚠️ This number is already registered.")
+            else:
+                st.warning("Please fill all details.")
 
-    # === TAB 2: SMART FARM (Simplified) ===
+# === SCENE 2: DASHBOARD (Logged In) ===
+else:
+    user = st.session_state.user
+    
+    # Header
+    c1, c2 = st.columns([4,1])
+    with c1: 
+        st.title(f"Namaste, {user['name']} 🙏")
+        st.write(f"📍 {user['village']} | 📱 {user['phone']}")
+    with c2:
+        if st.button("Log Out"):
+            st.session_state.user = None
+            st.rerun()
+            
+    st.divider()
+    
+    # TABS
+    tabs = st.tabs(["💰 Profit Calculator", "🩺 Crop Doctor", "📜 History", "💬 Voice Chat"])
+
+    # TAB 1: PROFIT
+    with tabs[0]:
+        st.subheader("Smart Profit Calculator")
+        season = st.selectbox("Season", ["Kharif", "Rabi", "Summer"])
+        budget = st.selectbox("Budget", ["Low", "High"])
+        
+        if st.button("Calculate Best Crop"):
+            with st.spinner("AI Thinking..."):
+                prompt = f"Suggest 1 profitable crop for {season} season in {user['village']} with {budget} budget. Keep it short."
+                res = get_ai_response(prompt)
+                
+                st.markdown(f"<div class='feature-card'>{res}</div>", unsafe_allow_html=True)
+                speak_text(res)
+                
+                # Save to Database
+                save_history(user['phone'], "Profit Calc", res)
+
+    # TAB 2: CROP DOCTOR
     with tabs[1]:
-        st.markdown(f"### 🌱 Smart Farm ({target_lang})")
-        tool = st.radio("Select Tool:", ["💰 Profit Calculator", "📅 Weekly Planner"], horizontal=True)
-        st.markdown("---")
+        st.subheader("Crop Doctor")
+        img = st.file_uploader("Upload Leaf", type=['jpg','png'])
+        if img and st.button("Diagnose"):
+            st.info("AI Analysis requires image setup (Added in full version)")
+            save_history(user['phone'], "Diagnosis", "Image Analyzed")
 
-        if "Profit" in tool:
-            c1, c2 = st.columns(2)
-            with c1: 
-                season = st.selectbox("Season / हंगाम", ["Kharif (Monsoon)", "Rabi (Winter)", "Zaid (Summer)"])
-                budget = st.selectbox("Budget / गुंतवणूक", ["Low (कमी)", "Medium (मध्यम)", "High (जास्त)"])
-            with c2: 
-                water = st.selectbox("Water / पाणी", ["Rainfed (पाऊस)", "Well (विहीर)", "Irrigation (कॅनॉल)"])
-                land = st.text_input("Land / जमीन", "1 Acre")
-            
-            if st.button("🚀 Calculate Profit"):
-                with st.spinner("Analyzing..."):
-                    prompt = f"Suggest 3 most profitable crops for Season: {season}, Location: {user_city}, Budget: {budget}, Water: {water}. Output in {target_lang}."
-                    res = get_ai_response(prompt)
-                    st.markdown(f"<div class='feature-card' style='border-left:5px solid #ff9933'>{res}</div>", unsafe_allow_html=True)
-                    speak_text("Here is the profit plan.", voice_lang_code)
-        else:
-            c1, c2 = st.columns(2)
-            with c1: crop_name = st.text_input("Crop Name", "Sugarcane")
-            with c2: sow_date = st.date_input("Sowing Date", datetime.date.today())
-            
-            if st.button("📝 Create Schedule"):
-                with st.spinner("Creating Plan..."):
-                    days_old = (datetime.date.today() - sow_date).days
-                    prompt = f"Create weekly schedule for {crop_name} (Age: {days_old} days). Language: {target_lang}."
-                    res = get_ai_response(prompt)
-                    st.markdown(f"<div class='feature-card'>{res}</div>", unsafe_allow_html=True)
-
-    # === TAB 3: SCHEMES (Fixed HTML News) ===
+    # TAB 3: HISTORY (Read from Database)
     with tabs[2]:
-        st.markdown("### 🏛️ Schemes")
-        cols = st.columns(2)
-        for i, scheme in enumerate(PERMANENT_SCHEMES):
-            with cols[i % 2]:
-                st.markdown(f"<div class='feature-card' style='padding:10px; text-align:center;'><b>{scheme['name']}</b><br><a href='{scheme['link']}'>View</a></div>", unsafe_allow_html=True)
-        
-        st.write("---")
-        if st.button("🔄 Get Latest News"):
-            with st.spinner("Fetching..."):
-                news_html = fetch_translated_news(target_lang)
-                st.markdown(news_html, unsafe_allow_html=True)
-
-    # === TAB 4: 3D VOICE CHAT ===
-    with tabs[3]:
-        st.markdown(f"### 💬 Voice Assistant")
-        
-        if "messages" not in st.session_state: st.session_state.messages = []
-        for msg in st.session_state.messages:
-            with st.chat_message(msg["role"]): st.markdown(msg["content"])
-        
-        st.markdown("""
-            <div class="voice-box">
-                <h3 style="color:#138808; margin:0;">🎙️ Tap Below to Speak</h3>
-                <p style="color:#666; font-size:12px;">(बोलण्यासाठी खालील बटण दाबा)</p>
-            </div>
-        """, unsafe_allow_html=True)
-
-        # SAFE IMPORT (Fixes 'ModuleNotFound' crash)
-        try:
-            from streamlit_mic_recorder import speech_to_text
-            audio_text = speech_to_text(
-                language=voice_lang_code,
-                start_prompt="🟢 START",
-                stop_prompt="🔴 STOP",
-                just_once=True,
-                key='STT_KEY'
-            )
-        except:
-            st.warning("⚠️ Microphone library missing. Use text input.")
-            audio_text = None
-        
-        text_input = st.chat_input("...or type here")
-        prompt = audio_text if audio_text else text_input
-
-        if prompt:
-            st.session_state.messages.append({"role": "user", "content": prompt})
-            with st.chat_message("user"): st.markdown(prompt)
+        st.subheader("Your Activity History")
+        if client:
+            db = client["GreenMitra_DB"]
+            # Get last 5 actions
+            history = list(db["history"].find({"phone": user['phone']}).limit(5))
             
-            with st.chat_message("assistant"):
-                with st.spinner("Thinking..."):
-                    reply = get_ai_response(f"Reply in {target_lang}. Q: {prompt}")
-                    st.markdown(reply)
-                    st.session_state.messages.append({"role": "assistant", "content": reply})
-                    speak_text(reply.replace("*", ""), voice_lang_code)
+            if history:
+                for item in history:
+                    st.markdown(f"**{item['date']}**: {item['action']}")
+                    st.caption(str(item.get('details', ''))[:100] + "...")
+                    st.divider()
+            else:
+                st.info("No history yet.")
 
-if __name__ == "__main__":
-    main()
+    # TAB 4: VOICE
+    with tabs[3]:
+        st.subheader("Voice Assistant")
+        q = st.chat_input("Ask anything...")
+        if q:
+            st.write(f"You: {q}")
+            ans = get_ai_response(q)
+            st.write(f"AI: {ans}")
+            speak_text(ans)
