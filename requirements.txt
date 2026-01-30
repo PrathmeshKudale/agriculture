@@ -6,3 +6,4 @@ edge-tts
 requests
 feedparser
 streamlit-mic-recorder
+pymongo
