@@ -1,9 +1,11 @@
 streamlit
+plotly
+pandas
+numpy
 google-generativeai
-gTTS
-Pillow
-edge-tts 
-requests
 feedparser
+gTTS
+edge-tts
 streamlit-mic-recorder
-pymongo
+Pillow
+requests
