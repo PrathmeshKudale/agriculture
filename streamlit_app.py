@@ -1558,7 +1558,7 @@ def main():
                         """, unsafe_allow_html=True)
     
     # === TAB 6: MARKET INSIGHTS ENHANCED ===
-        # === TAB 6: MARKET INSIGHTS ENHANCED ===
+       # === TAB 6: MARKET INSIGHTS ENHANCED ===
     with tabs[5]:
         st.markdown("### 📈 Live Mandi Market Prices")
         
@@ -1567,12 +1567,11 @@ def main():
             'Crop': ['Wheat', 'Rice', 'Cotton', 'Soybean', 'Maize', 'Sugarcane', 'Onion', 'Potato'],
             'Price (₹/Qtl)': [2100, 1850, 6200, 4500, 1950, 350, 2200, 1800],
             'Change (%)': [2.5, -1.2, 3.8, 0.5, -2.1, 1.5, -5.2, 3.2],
-            'Demand': ['High', 'High', 'Very High', 'Medium', 'Medium', 'High', 'High', 'Medium'],
-            'Arrival (Qtl)': [50000, 75000, 25000, 40000, 60000, 200000, 45000, 80000]
+            'Demand': ['High', 'High', 'Very High', 'Medium', 'Medium', 'High', 'High', 'Medium']
         })
         
-        # Color code changes
-        market_df['Color'] = market_df['Change (%)'].apply(lambda x: '#10B981' if x > 0 else '#EF4444')
+        # Add color indicators as separate column instead of styling
+        market_df['Trend'] = market_df['Change (%)'].apply(lambda x: '🟢' if x > 0 else '🔴')
         
         col_m1, col_m2 = st.columns([2, 1])
         
@@ -1583,7 +1582,7 @@ def main():
             fig.add_trace(go.Bar(
                 x=market_df['Crop'],
                 y=market_df['Price (₹/Qtl)'],
-                marker_color=market_df['Color'],
+                marker_color=market_df['Change (%)'].apply(lambda x: '#10B981' if x > 0 else '#EF4444'),
                 text=market_df['Change (%)'].apply(lambda x: f"{x:+.1f}%"),
                 textposition='outside',
                 hovertemplate='<b>%{x}</b><br>Price: ₹%{y}<br>Change: %{text}<extra></extra>'
@@ -1601,18 +1600,19 @@ def main():
             
             st.plotly_chart(fig, use_container_width=True)
             
-            # FIXED: Market table with proper syntax
-            def color_change(val):
-                color = 'green' if val > 0 else 'red'
-                return f'color: {color}; font-weight: 600;'
+            # SIMPLIFIED TABLE - No styling to avoid errors
+            display_df = market_df[['Trend', 'Crop', 'Price (₹/Qtl)', 'Change (%)', 'Demand']].copy()
+            display_df.columns = ['', 'Crop', 'Price (₹)', 'Change', 'Demand']
             
             st.dataframe(
-                market_df[['Crop', 'Price (₹/Qtl)', 'Change (%)', 'Demand']].style
-                .map(color_change, subset=['Change (%)'])
-                .background_gradient(subset=['Price (₹/Qtl)'], cmap='YlGn')
-                .format({'Price (₹/Qtl)': '₹{:,.0f}', 'Change (%)': '{:+.1f}%'}),
+                display_df,
                 use_container_width=True,
-                hide_index=True
+                hide_index=True,
+                column_config={
+                    "": st.column_config.Column(width="small"),
+                    "Price (₹)": st.column_config.NumberColumn(format="₹%d"),
+                    "Change": st.column_config.NumberColumn(format="%+.1f%%")
+                }
             )
         
         with col_m2:
