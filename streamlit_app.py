@@ -507,7 +507,7 @@ def get_ai_response(prompt, context=""):
             return "⚠️ AI service is not configured. Please add your Google API key."
         
         # NEW (Correct)
-        model = genai.GenerativeModel("gemini-1.5-flash/gemini-pro")
+        model = genai.GenerativeModel("gemini-1.5-flash")
         
         full_prompt = f"""
         You are GreenMitra AI, an expert agricultural assistant for Indian farmers.
