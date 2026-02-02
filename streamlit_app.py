@@ -1558,6 +1558,7 @@ def main():
                         """, unsafe_allow_html=True)
     
     # === TAB 6: MARKET INSIGHTS ENHANCED ===
+        # === TAB 6: MARKET INSIGHTS ENHANCED ===
     with tabs[5]:
         st.markdown("### 📈 Live Mandi Market Prices")
         
@@ -1600,12 +1601,16 @@ def main():
             
             st.plotly_chart(fig, use_container_width=True)
             
-            # Market table
+            # FIXED: Market table with proper syntax
+            def color_change(val):
+                color = 'green' if val > 0 else 'red'
+                return f'color: {color}; font-weight: 600;'
+            
             st.dataframe(
-                market_df[['Crop', 'Price (₹/Qtl)', 'Change (%)', 'Demand']].style.apply(
-                    lambda x: ['background: rgba(16,185,129,0.1)' if v > 0 else 'background: rgba(239,68,68,0.1)' 
-                              for v in market_df['Change (%)']], subset=['Change (%)']axis=0
-                ),
+                market_df[['Crop', 'Price (₹/Qtl)', 'Change (%)', 'Demand']].style
+                .map(color_change, subset=['Change (%)'])
+                .background_gradient(subset=['Price (₹/Qtl)'], cmap='YlGn')
+                .format({'Price (₹/Qtl)': '₹{:,.0f}', 'Change (%)': '{:+.1f}%'}),
                 use_container_width=True,
                 hide_index=True
             )
