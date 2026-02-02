@@ -30,21 +30,45 @@ st.set_page_config(
 )
 
 # --- 2. KEYS ---
+# --- 2. KEYS (Fixed Section) ---
 try:
+    # This safely attempts to load the key
     GOOGLE_API_KEY = st.secrets["GOOGLE_API_KEY"]
-except (FileNotFoundError, KeyError):
+except Exception:
     GOOGLE_API_KEY = ""
 
-# Configure the AI only if the key exists
+# Configure AI if key exists
 if GOOGLE_API_KEY:
     genai.configure(api_key=GOOGLE_API_KEY)
 
-# Get Weather Key (Optional)
 try:
     WEATHER_API_KEY = st.secrets["WEATHER_API_KEY"]
-except (FileNotFoundError, KeyError):
+except Exception:
     WEATHER_API_KEY = ""
 
+# --- (Keep your other code here until you reach the get_ai_response function) ---
+
+# --- FIXED AI FUNCTION (Replace your old function with this) ---
+def get_ai_response(prompt, context=""):
+    """Get AI response from Gemini"""
+    try:
+        # Check if Key exists before trying
+        if not GOOGLE_API_KEY:
+            return "⚠️ Error: API Key is missing. Please add GOOGLE_API_KEY to Streamlit Secrets."
+        
+        # FIX: We removed 'models/' from the name. This fixes the 404 error.
+        model = genai.GenerativeModel("gemini-1.5-flash")
+        
+        full_prompt = f"""
+        You are GreenMitra AI, an expert agricultural assistant for Indian farmers.
+        Context: {context}
+        User Query: {prompt}
+        """
+        
+        response = model.generate_content(full_prompt)
+        return response.text
+    except Exception as e:
+        return f"⚠️ AI Service Error: {str(e)}"
 # --- 3. MODERN CSS WITH ADVANCED ANIMATIONS ---
 st.markdown("""
     <style>
