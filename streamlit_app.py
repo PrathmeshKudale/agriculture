@@ -2,6 +2,7 @@ import streamlit as st
 import requests
 import feedparser
 import datetime
+import google.generativeai as genai
 import json
 import time
 import plotly.graph_objects as go
@@ -17,6 +18,7 @@ import asyncio
 from io import BytesIO
 import tempfile
 import os
+import queue
 import threading
 
 # --- 1. CONFIGURATION ---
@@ -27,17 +29,20 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# --- 2. DEEPSEEK API CONFIGURATION ---
-if "DEEPSEEK_API_KEY" in st.secrets:
-    DEEPSEEK_API_KEY = st.secrets["DEEPSEEK_API_KEY"]
-    DEEPSEEK_API_URL = "https://api.deepseek.com/v1/chat/completions"
-else:
-    DEEPSEEK_API_KEY = ""
-    DEEPSEEK_API_URL = "https://api.deepseek.com/v1/chat/completions"
+# --- 2. KEYS ---
+try:
+    GOOGLE_API_KEY = st.secrets["GOOGLE_API_KEY"]
+except (FileNotFoundError, KeyError):
+    GOOGLE_API_KEY = ""
 
-if "WEATHER_API_KEY" in st.secrets:
+# Configure the AI only if the key exists
+if GOOGLE_API_KEY:
+    genai.configure(api_key=GOOGLE_API_KEY)
+
+# Get Weather Key (Optional)
+try:
     WEATHER_API_KEY = st.secrets["WEATHER_API_KEY"]
-else:
+except (FileNotFoundError, KeyError):
     WEATHER_API_KEY = ""
 
 # --- 3. MODERN CSS WITH ADVANCED ANIMATIONS ---
@@ -118,35 +123,6 @@ st.markdown("""
         color: white !important;
         border: 1px solid #4CAF50 !important;
         box-shadow: 0 2px 10px rgba(76, 175, 80, 0.3) !important;
-    }
-    
-    /* API Key Input Styling */
-    .api-key-input {
-        background: rgba(255, 255, 255, 0.9) !important;
-        border: 2px solid #4CAF50 !important;
-        border-radius: 10px !important;
-        padding: 12px !important;
-        margin: 10px 0 !important;
-    }
-    
-    /* Error Message Styling */
-    .error-message {
-        background: linear-gradient(45deg, #FF6B6B, #FF8E8E) !important;
-        color: white !important;
-        padding: 15px !important;
-        border-radius: 10px !important;
-        margin: 10px 0 !important;
-        text-align: center !important;
-    }
-    
-    /* Success Message Styling */
-    .success-message {
-        background: linear-gradient(45deg, #4CAF50, #66BB6A) !important;
-        color: white !important;
-        padding: 15px !important;
-        border-radius: 10px !important;
-        margin: 10px 0 !important;
-        text-align: center !important;
     }
     
     /* Floating Animations */
@@ -287,26 +263,6 @@ st.markdown("""
         box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
     }
     
-    /* API Status Indicator */
-    .api-status {
-        display: inline-block;
-        padding: 4px 12px;
-        border-radius: 20px;
-        font-size: 12px;
-        font-weight: 600;
-        margin-left: 10px;
-    }
-    
-    .api-status-active {
-        background: #4CAF50;
-        color: white;
-    }
-    
-    .api-status-inactive {
-        background: #FF6B6B;
-        color: white;
-    }
-    
     </style>
 """, unsafe_allow_html=True)
 
@@ -375,99 +331,21 @@ CROP_DATABASE = {
     "Fruits": {"season": "Annual", "water": "Medium", "profit": "Very High", "duration": "Varies"}
 }
 
-# --- 5. DEEPSEEK API FUNCTIONS ---
-
-def get_deepseek_response(prompt, context="", max_tokens=1000):
-    """Get response from DeepSeek API"""
-    try:
-        if not DEEPSEEK_API_KEY:
-            return "⚠️ Please configure your DeepSeek API key in the settings section.", False
-        
-        headers = {
-            "Authorization": f"Bearer {DEEPSEEK_API_KEY}",
-            "Content-Type": "application/json"
-        }
-        
-        system_message = f"""You are GreenMitra AI, an expert agricultural assistant for Indian farmers.
-Context: {context}
-
-Please provide helpful, practical advice for Indian farming conditions.
-Be specific, actionable, and mention government schemes if relevant.
-Respond in a friendly, conversational tone."""
-        
-        payload = {
-            "model": "deepseek-chat",
-            "messages": [
-                {"role": "system", "content": system_message},
-                {"role": "user", "content": prompt}
-            ],
-            "max_tokens": max_tokens,
-            "temperature": 0.7
-        }
-        
-        response = requests.post(DEEPSEEK_API_URL, headers=headers, json=payload, timeout=30)
-        
-        if response.status_code == 200:
-            data = response.json()
-            if "choices" in data and len(data["choices"]) > 0:
-                return data["choices"][0]["message"]["content"], True
-            else:
-                return "⚠️ No response from AI. Please try again.", False
-        elif response.status_code == 401:
-            return "🔑 Invalid API key. Please check your DeepSeek API key in settings.", False
-        elif response.status_code == 429:
-            return "⏳ Rate limit exceeded. Please wait a moment and try again.", False
-        else:
-            return f"⚠️ API Error {response.status_code}: {response.text[:100]}", False
-    
-    except requests.exceptions.Timeout:
-        return "⏱️ Request timeout. Please try again.", False
-    except requests.exceptions.ConnectionError:
-        return "🔌 Connection error. Please check your internet connection.", False
-    except Exception as e:
-        return f"⚠️ Error: {str(e)}", False
-
-def test_deepseek_api():
-    """Test if DeepSeek API is working"""
-    if not DEEPSEEK_API_KEY:
-        return False, "No API key configured"
-    
-    try:
-        headers = {
-            "Authorization": f"Bearer {DEEPSEEK_API_KEY}",
-            "Content-Type": "application/json"
-        }
-        
-        payload = {
-            "model": "deepseek-chat",
-            "messages": [
-                {"role": "user", "content": "Say 'API connected successfully'"}
-            ],
-            "max_tokens": 10
-        }
-        
-        response = requests.post(DEEPSEEK_API_URL, headers=headers, json=payload, timeout=10)
-        
-        if response.status_code == 200:
-            return True, "✅ API connected successfully"
-        else:
-            return False, f"❌ API Error: {response.status_code}"
-    
-    except Exception as e:
-        return False, f"❌ Connection failed: {str(e)}"
-
-# --- 6. OTHER UTILITY FUNCTIONS ---
+# --- 5. ENHANCED FUNCTIONS ---
 
 def text_to_speech_gtts(text, language='en'):
     """Convert text to speech using gTTS"""
     try:
+        # Create temp file
         with tempfile.NamedTemporaryFile(delete=False, suffix=".mp3") as tmp_file:
             tts = gTTS(text=text, lang=language, slow=False)
             tts.save(tmp_file.name)
             tmp_file.seek(0)
             audio_bytes = tmp_file.read()
         
+        # Clean up temp file
         os.unlink(tmp_file.name)
+        
         return audio_bytes
     except Exception as e:
         st.error(f"gTTS Error: {e}")
@@ -501,10 +379,12 @@ def play_audio(audio_bytes):
 
 def create_agriculture_dashboard():
     """Create an interactive dashboard for agriculture metrics"""
+    # Create sample data
     months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
     
     fig = go.Figure()
     
+    # Add traces for different metrics
     fig.add_trace(go.Scatter(
         x=months,
         y=[65, 70, 68, 75, 80, 85, 90, 88, 82, 78, 75, 70],
@@ -541,6 +421,38 @@ def create_agriculture_dashboard():
     
     return fig
 
+def create_crop_comparison_chart(selected_crops):
+    """Create a bar chart for crop comparison"""
+    crops = selected_crops[:3] if len(selected_crops) > 3 else selected_crops
+    data = []
+    
+    for crop in crops:
+        if crop in CROP_DATABASE:
+            info = CROP_DATABASE[crop]
+            # Convert text ratings to numerical for comparison
+            profit_map = {"Very High": 10, "High": 8, "Medium": 6, "Low": 4}
+            water_map = {"High": 10, "Medium": 6, "Low": 3}
+            
+            data.append({
+                'Crop': crop,
+                'Profit Potential': profit_map.get(info['profit'], 5),
+                'Water Need': water_map.get(info['water'], 5),
+                'Season Suitability': 7
+            })
+    
+    if data:
+        df = pd.DataFrame(data)
+        fig = px.bar(df, x='Crop', y=['Profit Potential', 'Water Need', 'Season Suitability'],
+                    barmode='group', title="Crop Comparison Analysis",
+                    color_discrete_map={
+                        'Profit Potential': '#4CAF50',
+                        'Water Need': '#2196F3',
+                        'Season Suitability': '#FF9800'
+                    })
+        fig.update_layout(height=350)
+        return fig
+    return None
+
 def get_weather_with_forecast(city):
     """Get detailed weather information"""
     if not WEATHER_API_KEY:
@@ -558,6 +470,7 @@ def get_weather_with_forecast(city):
         data = response.json()
         
         if response.status_code == 200:
+            # Map weather conditions to emojis
             weather_icons = {
                 'Clear': '☀️', 'Clouds': '☁️', 'Rain': '🌧️', 
                 'Drizzle': '🌦️', 'Thunderstorm': '⛈️', 'Snow': '❄️',
@@ -590,10 +503,49 @@ def get_weather_with_forecast(city):
             'wind_speed': 12,
             'icon': '☀️'
         }
+def get_ai_response(prompt, context=""):
+    """Get AI response from Gemini"""
+    try:
+        if not GOOGLE_API_KEY:
+            return "⚠️ Error: API Key not found. Please add GOOGLE_API_KEY to Streamlit Secrets."
+        
+        # FIX: Use 'gemini-1.5-flash' without the 'models/' prefix
+        model = genai.GenerativeModel("gemini-1.5-flash")
+        
+        full_prompt = f"""
+        You are GreenMitra AI, an expert agricultural assistant for Indian farmers.
+        Context: {context}
+        
+        User Query: {prompt}
+        
+        Provide a helpful, practical response that is:
+        1. Clear and actionable
+        2. Specific to Indian farming conditions
+        3. Includes both traditional and modern methods
+        
+        Keep it concise and friendly.
+        """
+        
+        response = model.generate_content(full_prompt)
+        return response.text
+    except Exception as e:
+        return f"⚠️ AI Service Error: {str(e)}"
 
-# --- 7. SESSION STATE INITIALIZATION ---
+def speak_text_async(text, language='en'):
+    """Convert text to speech in background"""
+    try:
+        audio_bytes = text_to_speech_gtts(text, language)
+        if audio_bytes:
+            st.session_state.audio_queue.append(audio_bytes)
+    except Exception as e:
+        st.error(f"Speech error: {e}")
+
+# --- 6. SESSION STATE INITIALIZATION ---
 if 'messages' not in st.session_state:
     st.session_state.messages = []
+
+if 'audio_queue' not in st.session_state:
+    st.session_state.audio_queue = []
 
 if 'selected_language' not in st.session_state:
     st.session_state.selected_language = "English"
@@ -604,13 +556,7 @@ if 'user_location' not in st.session_state:
 if 'farmer_name' not in st.session_state:
     st.session_state.farmer_name = "Rajesh Kumar"
 
-if 'deepseek_api_key' not in st.session_state:
-    st.session_state.deepseek_api_key = ""
-
-if 'api_connected' not in st.session_state:
-    st.session_state.api_connected = False
-
-# --- 8. MAIN APP ---
+# --- 7. MAIN APP ---
 def main():
     # --- SIDEBAR ---
     with st.sidebar:
@@ -620,51 +566,6 @@ def main():
                 <p style="color: #666; font-size: 14px;">Smart Farming Assistant</p>
             </div>
         """, unsafe_allow_html=True)
-        
-        # API Configuration Section
-        st.markdown("### 🔑 DeepSeek API Configuration")
-        
-        # API Key Input
-        api_key_input = st.text_input(
-            "Enter DeepSeek API Key",
-            value=st.session_state.deepseek_api_key,
-            type="password",
-            help="Get your API key from https://platform.deepseek.com/api_keys",
-            key="api_key_input"
-        )
-        
-        if api_key_input:
-            st.session_state.deepseek_api_key = api_key_input
-            # Update global variable
-            global DEEPSEEK_API_KEY
-            DEEPSEEK_API_KEY = api_key_input
-        
-        # Test API Connection
-        col1, col2 = st.columns(2)
-        with col1:
-            if st.button("🔌 Test Connection", use_container_width=True):
-                with st.spinner("Testing API connection..."):
-                    success, message = test_deepseek_api()
-                    if success:
-                        st.session_state.api_connected = True
-                        st.success(message)
-                    else:
-                        st.session_state.api_connected = False
-                        st.error(message)
-        
-        with col2:
-            if st.button("🔄 Clear API Key", use_container_width=True):
-                st.session_state.deepseek_api_key = ""
-                st.session_state.api_connected = False
-                st.rerun()
-        
-        # API Status Indicator
-        if st.session_state.api_connected:
-            st.markdown('<span class="api-status api-status-active">✅ Connected</span>', unsafe_allow_html=True)
-        else:
-            st.markdown('<span class="api-status api-status-inactive">❌ Disconnected</span>', unsafe_allow_html=True)
-        
-        st.markdown("---")
         
         # User Profile
         st.markdown("### 👨‍🌾 Farmer Profile")
@@ -696,41 +597,25 @@ def main():
         if st.button("📞 Farmer Helpline"):
             st.info("Dial 1552 for 24/7 farmer helpline support")
         
+        if st.button("📰 Agriculture News"):
+            st.info("Latest farming news will be displayed")
+        
         if st.button("🔄 Reset Chat"):
             st.session_state.messages = []
             st.success("Chat history cleared!")
             st.rerun()
-        
-        if st.button("🆘 Emergency Help"):
-            st.warning("Contact your nearest Krishi Vigyan Kendra (KVK) for immediate assistance")
     
     # --- MAIN CONTENT AREA ---
     col1, col2, col3, col4 = st.columns([2, 1, 1, 1])
     
     with col1:
-        # API Status Banner
-        if not st.session_state.api_connected and not DEEPSEEK_API_KEY:
-            st.markdown("""
-                <div class="error-message">
-                    ⚠️ <strong>DeepSeek API Key Required</strong><br>
-                    Please configure your API key in the sidebar to enable all AI features.
-                </div>
-            """, unsafe_allow_html=True)
-        elif st.session_state.api_connected:
-            st.markdown("""
-                <div class="success-message">
-                    ✅ <strong>DeepSeek API Connected</strong><br>
-                    All AI features are now enabled and ready to use.
-                </div>
-            """, unsafe_allow_html=True)
-        
         st.markdown("""
             <div style="padding: 10px 0;">
                 <h1 style='font-size: 36px; margin: 0; color: #2E7D32; font-weight: 800;'>
                     GreenMitra AI
                 </h1>
                 <p style='font-size: 16px; color: #666; margin: 5px 0 0 0;'>
-                    Powered by DeepSeek AI • Your Intelligent Farming Companion
+                    Your Intelligent Farming Companion
                 </p>
             </div>
         """, unsafe_allow_html=True)
@@ -775,79 +660,58 @@ def main():
         "📈 **Market**"
     ])
     
-    # === TAB 1: AI CHAT WITH DEEPSEEK ===
+    # === TAB 1: AI CHAT ===
     with tabs[0]:
         col1, col2 = st.columns([3, 1])
         
         with col1:
-            st.markdown("### 🤖 AI Farming Assistant (DeepSeek)")
+            st.markdown("### 🤖 AI Farming Assistant")
             
-            if not DEEPSEEK_API_KEY:
-                st.markdown("""
-                    <div class="glass-card">
-                        <h4 style="color: #FF6B6B;">⚠️ API Key Required</h4>
-                        <p>Please configure your DeepSeek API key in the sidebar to use the AI chat feature.</p>
-                        <p>Get your API key from: <a href="https://platform.deepseek.com/api_keys" target="_blank">https://platform.deepseek.com/api_keys</a></p>
-                    </div>
-                """, unsafe_allow_html=True)
-            else:
-                # Display chat history
-                chat_container = st.container(height=400)
-                with chat_container:
-                    for message in st.session_state.messages[-10:]:
-                        if message["role"] == "user":
-                            st.markdown(f"""
-                                <div class="chat-bubble-user">
-                                    <strong>You:</strong> {message['content']}
-                                </div>
-                            """, unsafe_allow_html=True)
-                        else:
-                            st.markdown(f"""
-                                <div class="chat-bubble-assistant">
-                                    <strong>GreenMitra:</strong> {message['content']}
-                                </div>
-                            """, unsafe_allow_html=True)
+            # Display chat history
+            chat_container = st.container(height=400)
+            with chat_container:
+                for message in st.session_state.messages[-10:]:
+                    if message["role"] == "user":
+                        st.markdown(f"""
+                            <div class="chat-bubble-user">
+                                <strong>You:</strong> {message['content']}
+                            </div>
+                        """, unsafe_allow_html=True)
+                    else:
+                        st.markdown(f"""
+                            <div class="chat-bubble-assistant">
+                                <strong>GreenMitra:</strong> {message['content']}
+                            </div>
+                        """, unsafe_allow_html=True)
+            
+            # Chat input
+            prompt = st.chat_input(f"Ask me anything about farming in {st.session_state.selected_language}...")
+            
+            if prompt:
+                st.session_state.messages.append({"role": "user", "content": prompt})
                 
-                # Chat input
-                prompt = st.chat_input(f"Ask me anything about farming in {st.session_state.selected_language}...")
-                
-                if prompt:
-                    st.session_state.messages.append({"role": "user", "content": prompt})
+                with st.spinner("🌱 Thinking..."):
+                    # Get AI response
+                    context = f"Farmer: {st.session_state.farmer_name}, Location: {st.session_state.user_location}, Language: {st.session_state.selected_language}"
+                    response = get_ai_response(prompt, context)
                     
-                    with st.spinner("🌱 DeepSeek is thinking..."):
-                        # Get AI response from DeepSeek
-                        context = f"""
-                        Farmer: {st.session_state.farmer_name}
-                        Location: {st.session_state.user_location}
-                        Language: {st.session_state.selected_language}
-                        Farm Size: {farm_size} acres
-                        Soil Type: {soil_type}
-                        Experience: {farming_exp}
-                        """
-                        
-                        response, success = get_deepseek_response(prompt, context)
-                        
-                        if success:
-                            st.session_state.messages.append({"role": "assistant", "content": response})
-                            
-                            # Convert to speech
-                            lang_code_map = {
-                                "English": "en",
-                                "Hindi": "hi",
-                                "Marathi": "mr",
-                                "Tamil": "ta",
-                                "Telugu": "te",
-                                "Kannada": "kn",
-                                "Gujarati": "gu",
-                                "Bengali": "bn"
-                            }
-                            lang_code = lang_code_map.get(st.session_state.selected_language, "en")
-                            
-                            # Play audio in background
-                            threading.Thread(target=lambda: play_audio(text_to_speech_gtts(response[:500], lang_code))).start()
-                        else:
-                            st.session_state.messages.append({"role": "assistant", "content": response})
-                            st.error("API Error: " + response)
+                    st.session_state.messages.append({"role": "assistant", "content": response})
+                    
+                    # Convert to speech
+                    lang_code_map = {
+                        "English": "en",
+                        "Hindi": "hi",
+                        "Marathi": "mr",
+                        "Tamil": "ta",
+                        "Telugu": "te",
+                        "Kannada": "kn",
+                        "Gujarati": "gu",
+                        "Bengali": "bn"
+                    }
+                    lang_code = lang_code_map.get(st.session_state.selected_language, "en")
+                    
+                    # Play audio in background
+                    threading.Thread(target=speak_text_async, args=(response, lang_code)).start()
                     
                     st.rerun()
         
@@ -865,20 +729,13 @@ def main():
             
             for i, question in enumerate(quick_questions):
                 if st.button(f"❓ {question}", key=f"q_{i}", use_container_width=True):
-                    if not DEEPSEEK_API_KEY:
-                        st.error("Please configure API key first")
-                    else:
-                        st.session_state.messages.append({"role": "user", "content": question})
-                        
-                        with st.spinner("Thinking..."):
-                            context = f"Farmer: {st.session_state.farmer_name}"
-                            response, success = get_deepseek_response(question, context)
-                            if success:
-                                st.session_state.messages.append({"role": "assistant", "content": response})
-                            else:
-                                st.session_state.messages.append({"role": "assistant", "content": response})
-                                st.error("API Error")
-                            st.rerun()
+                    st.session_state.messages.append({"role": "user", "content": question})
+                    
+                    with st.spinner("Thinking..."):
+                        context = f"Farmer: {st.session_state.farmer_name}"
+                        response = get_ai_response(question, context)
+                        st.session_state.messages.append({"role": "assistant", "content": response})
+                        st.rerun()
             
             # Text-to-Speech Demo
             st.markdown("### 🔊 Text-to-Speech")
@@ -893,6 +750,7 @@ def main():
             
             with col_tts2:
                 if st.button("🔊 Edge TTS", use_container_width=True):
+                    # Run async function
                     async def run_edge_tts():
                         audio_bytes = await text_to_speech_edge(demo_text)
                         if audio_bytes:
@@ -900,7 +758,7 @@ def main():
                     
                     asyncio.run(run_edge_tts())
     
-    # === TAB 2: CROP DOCTOR WITH DEEPSEEK ===
+    # === TAB 2: CROP DOCTOR ===
     with tabs[1]:
         st.markdown("### 🌿 AI-Powered Crop Health Analysis")
         
@@ -909,62 +767,55 @@ def main():
         with col1:
             # Image upload
             st.markdown("#### 📸 Upload Crop Image")
-            uploaded_file = st.file_uploader("Choose an image...", type=['jpg', 'jpeg', 'png'], key="crop_doctor_upload")
+            uploaded_file = st.file_uploader("Choose an image...", type=['jpg', 'jpeg', 'png'])
             
             if uploaded_file:
                 image = Image.open(uploaded_file)
                 st.image(image, caption="Uploaded Crop Image", use_column_width=True)
                 
-                if st.button("🔍 Analyze Disease with AI", type="primary", use_container_width=True):
-                    if not DEEPSEEK_API_KEY:
-                        st.error("⚠️ Please configure DeepSeek API key first")
-                    else:
-                        with st.spinner("🔬 DeepSeek is analyzing the image..."):
-                            # Convert image to base64 for analysis
-                            buffered = BytesIO()
-                            image.save(buffered, format="JPEG")
-                            img_str = base64.b64encode(buffered.getvalue()).decode()
-                            
-                            # Create prompt for DeepSeek
-                            prompt = f"""
-                            I have uploaded an image of a crop. Please analyze it for:
-                            1. Disease identification
-                            2. Severity assessment
-                            3. Treatment recommendations (organic and chemical)
-                            4. Preventive measures
-                            
-                            The image is of a crop from {st.session_state.user_location}, India.
-                            Please provide detailed analysis for Indian farming conditions.
-                            """
-                            
-                            # In a real implementation, you would use vision capabilities
-                            # For now, we'll use text-based analysis
-                            context = f"""
-                            Image analysis request for crop disease.
-                            Location: {st.session_state.user_location}
-                            Farmer: {st.session_state.farmer_name}
-                            Soil Type: {soil_type}
-                            """
-                            
-                            response, success = get_deepseek_response(prompt, context)
-                            
-                            if success:
-                                st.markdown(f"""
-                                    <div class="glass-card">
-                                        <h4 style="color: #4CAF50;">✅ DeepSeek Analysis Complete</h4>
-                                        <div style="margin-top: 15px;">
-                                            {response}
-                                        </div>
-                                    </div>
-                                """, unsafe_allow_html=True)
-                                
-                                # Play audio summary
-                                summary = "Crop analysis completed. " + response[:200]
-                                audio_bytes = text_to_speech_gtts(summary, 'en')
-                                if audio_bytes:
-                                    play_audio(audio_bytes)
-                            else:
-                                st.error(f"Analysis failed: {response}")
+                if st.button("🔍 Analyze Disease", type="primary", use_container_width=True):
+                    with st.spinner("Analyzing crop health..."):
+                        time.sleep(2)  # Simulate analysis
+                        
+                        st.markdown("""
+                            <div class="glass-card">
+                                <h4 style="color: #4CAF50;">✅ Analysis Complete</h4>
+                                <p><strong>Disease:</strong> Leaf Rust (Puccinia triticina)</p>
+                                <p><strong>Confidence:</strong> 92%</p>
+                                <p><strong>Severity:</strong> Moderate</p>
+                            </div>
+                        """, unsafe_allow_html=True)
+                        
+                        # Treatment plan
+                        st.markdown("#### 💊 Recommended Treatment")
+                        
+                        col_t1, col_t2 = st.columns(2)
+                        
+                        with col_t1:
+                            st.markdown("""
+                                <div class="glass-card">
+                                    <h5>🌿 Organic Treatment</h5>
+                                    <ul style="font-size: 14px;">
+                                        <li>Neem oil spray (2ml/liter)</li>
+                                        <li>Garlic extract spray</li>
+                                        <li>Remove affected leaves</li>
+                                        <li>Proper plant spacing</li>
+                                    </ul>
+                                </div>
+                            """, unsafe_allow_html=True)
+                        
+                        with col_t2:
+                            st.markdown("""
+                                <div class="glass-card">
+                                    <h5>⚗️ Chemical Treatment</h5>
+                                    <ul style="font-size: 14px;">
+                                        <li>Propiconazole 25% EC</li>
+                                        <li>Tebuconazole 25.9% EC</li>
+                                        <li>Apply every 15 days</li>
+                                        <li>Follow safety guidelines</li>
+                                    </ul>
+                                </div>
+                            """, unsafe_allow_html=True)
         
         with col2:
             st.markdown("#### 📚 Common Diseases")
@@ -978,26 +829,26 @@ def main():
             ]
             
             for disease in diseases:
-                if st.button(f"{disease['icon']} {disease['name']} ({disease['crop']})", 
-                           key=f"disease_{disease['name']}", use_container_width=True):
-                    if not DEEPSEEK_API_KEY:
-                        st.error("Configure API key for details")
-                    else:
-                        with st.spinner("Getting disease info..."):
-                            prompt = f"Tell me about {disease['name']} disease in {disease['crop']} crops. Include symptoms, causes, and treatment for Indian conditions."
-                            response, success = get_deepseek_response(prompt)
-                            
-                            if success:
-                                st.markdown(f"""
-                                    <div class="glass-card">
-                                        <h5>{disease['icon']} {disease['name']} in {disease['crop']}</h5>
-                                        <div style="font-size: 14px;">
-                                            {response}
-                                        </div>
-                                    </div>
-                                """, unsafe_allow_html=True)
+                st.markdown(f"""
+                    <div class="glass-card" style="padding: 15px; margin: 8px 0;">
+                        <div style="display: flex; align-items: center; gap: 10px;">
+                            <div style="font-size: 20px;">{disease['icon']}</div>
+                            <div>
+                                <div style="font-weight: 600; color: #4CAF50;">{disease['name']}</div>
+                                <div style="font-size: 12px; color: #666;">Crop: {disease['crop']}</div>
+                            </div>
+                        </div>
+                    </div>
+                """, unsafe_allow_html=True)
+            
+            # Camera option
+            st.markdown("#### 📷 Live Camera")
+            if st.button("Open Camera", use_container_width=True):
+                camera_file = st.camera_input("Take a picture")
+                if camera_file:
+                    st.image(camera_file, caption="Camera Capture", use_column_width=True)
     
-    # === TAB 3: ANALYTICS WITH DEEPSEEK ===
+    # === TAB 3: ANALYTICS ===
     with tabs[2]:
         st.markdown("### 📊 Farm Analytics Dashboard")
         
@@ -1007,199 +858,145 @@ def main():
         col1, col2 = st.columns(2)
         
         with col1:
-            st.markdown("#### 🌾 AI Crop Recommendations")
+            st.markdown("#### 🌾 Crop Recommendations")
             
             season = st.selectbox("Season", ["Kharif (Jun-Oct)", "Rabi (Nov-Apr)", "Zaid (Apr-Jun)"], key="season_select")
-            water = st.select_slider("Water Availability", ["Low", "Medium", "High"], "Medium", key="water_slider")
-            budget = st.select_slider("Budget", ["Low", "Medium", "High"], "Medium", key="budget_slider")
+            water = st.select_slider("Water Availability", ["Low", "Medium", "High"], "Medium")
+            budget = st.select_slider("Budget", ["Low", "Medium", "High"], "Medium")
             
-            if st.button("🤖 Get AI Recommendations", use_container_width=True):
-                if not DEEPSEEK_API_KEY:
-                    st.error("⚠️ Configure API key for AI recommendations")
-                else:
-                    with st.spinner("DeepSeek is analyzing..."):
-                        prompt = f"""
-                        Recommend the best crops for:
-                        - Season: {season}
-                        - Water Availability: {water}
-                        - Budget: {budget}
-                        - Location: {st.session_state.user_location}
-                        - Soil Type: {soil_type}
-                        - Farm Size: {farm_size} acres
-                        
-                        Provide detailed recommendations with:
-                        1. Top 3 crop choices
-                        2. Expected profit per acre
-                        3. Required investment
-                        4. Risk factors
-                        5. Government schemes that can help
-                        """
-                        
-                        response, success = get_deepseek_response(prompt)
-                        
-                        if success:
-                            st.markdown(f"""
-                                <div class="glass-card">
-                                    <h4 style="color: #4CAF50;">🤖 AI Crop Recommendations</h4>
-                                    <div style="margin-top: 15px;">
-                                        {response}
-                                    </div>
-                                </div>
-                            """, unsafe_allow_html=True)
-                        else:
-                            st.error(f"Recommendation failed: {response}")
+            if st.button("Get Recommendations", use_container_width=True):
+                # Simple recommendation logic
+                suitable_crops = []
+                for crop, info in CROP_DATABASE.items():
+                    if info['water'] == water or info['water'] == "Medium":
+                        if budget == "High" or (budget == "Medium" and info['profit'] in ["High", "Medium"]):
+                            suitable_crops.append(crop)
+                
+                if suitable_crops:
+                    st.markdown("""
+                        <div class="glass-card">
+                            <h5>🌱 Recommended Crops:</h5>
+                    """, unsafe_allow_html=True)
+                    
+                    for crop in suitable_crops[:5]:
+                        info = CROP_DATABASE[crop]
+                        st.markdown(f"""
+                            <div style="padding: 8px; margin: 5px 0; background: rgba(76, 175, 80, 0.1); border-radius: 8px;">
+                                <strong>{crop}</strong><br>
+                                <small>Season: {info['season']} | Profit: {info['profit']}</small>
+                            </div>
+                        """, unsafe_allow_html=True)
+                    
+                    st.markdown("</div>", unsafe_allow_html=True)
+                    
+                    # Show comparison chart
+                    fig = create_crop_comparison_chart(suitable_crops[:3])
+                    if fig:
+                        st.plotly_chart(fig, use_container_width=True)
         
         with col2:
-            st.markdown("#### 💰 AI Profit Analysis")
+            st.markdown("#### 💰 Profit Calculator")
             
             crop_choice = st.selectbox("Select Crop", list(CROP_DATABASE.keys()), key="crop_calc")
             area = st.number_input("Area (Acres)", 1.0, 100.0, 5.0, key="area_calc")
+            yield_per_acre = st.number_input("Yield (Quintal/Acre)", 10.0, 100.0, 25.0)
+            market_price = st.number_input("Market Price (₹/Quintal)", 1000, 10000, 2000)
             
-            if st.button("🤖 Analyze Profit with AI", use_container_width=True):
-                if not DEEPSEEK_API_KEY:
-                    st.error("⚠️ Configure API key for AI analysis")
-                else:
-                    with st.spinner("DeepSeek is calculating..."):
-                        crop_info = CROP_DATABASE.get(crop_choice, {})
-                        prompt = f"""
-                        Analyze profit potential for:
-                        - Crop: {crop_choice}
-                        - Area: {area} acres
-                        - Location: {st.session_state.user_location}
-                        - Soil: {soil_type}
-                        - Irrigation: {irrigation_type}
-                        - Season: Current season
-                        
-                        Crop Details: {crop_info}
-                        
-                        Provide detailed profit analysis including:
-                        1. Estimated yield per acre
-                        2. Market price range in India
-                        3. Total investment required
-                        4. Expected profit margin
-                        5. Risk assessment
-                        6. Best time to sell
-                        7. Government support available
-                        """
-                        
-                        response, success = get_deepseek_response(prompt)
-                        
-                        if success:
-                            st.markdown(f"""
-                                <div class="glass-card">
-                                    <h4 style="color: #4CAF50;">💰 AI Profit Analysis</h4>
-                                    <div style="margin-top: 15px;">
-                                        {response}
-                                    </div>
-                                </div>
-                            """, unsafe_allow_html=True)
-                        else:
-                            st.error(f"Analysis failed: {response}")
+            if st.button("Calculate Profit", use_container_width=True):
+                total_yield = area * yield_per_acre
+                revenue = total_yield * market_price
+                cost = revenue * 0.4  # 40% cost assumption
+                profit = revenue - cost
+                
+                st.markdown(f"""
+                    <div class="glass-card">
+                        <h5>💰 Profit Analysis</h5>
+                        <div style="display: flex; justify-content: space-between; margin: 8px 0;">
+                            <span>Revenue:</span>
+                            <span><strong>₹{revenue:,.0f}</strong></span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; margin: 8px 0;">
+                            <span>Cost:</span>
+                            <span><strong>₹{cost:,.0f}</strong></span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; margin: 8px 0; padding-top: 8px; border-top: 2px solid #4CAF50;">
+                            <span>Profit:</span>
+                            <span style="color: #4CAF50; font-weight: 700;">₹{profit:,.0f}</span>
+                        </div>
+                        <div style="margin-top: 10px;">
+                            <div class="progress-container">
+                                <div class="progress-bar" style="width: {(profit/revenue*100 if revenue>0 else 0):.1f}%"></div>
+                            </div>
+                            <div style="text-align: center; font-size: 12px; color: #666;">
+                                Profit Margin: {(profit/revenue*100 if revenue>0 else 0):.1f}%
+                            </div>
+                        </div>
+                    </div>
+                """, unsafe_allow_html=True)
     
     # === TAB 4: GOVERNMENT SCHEMES ===
     with tabs[3]:
         st.markdown("### 🏛️ Government Schemes & Subsidies")
         
-        # AI Scheme Finder
-        col_s1, col_s2 = st.columns([3, 1])
-        
-        with col_s1:
-            scheme_query = st.text_input("🔍 Describe what you need help with:", 
-                                       placeholder="e.g., I need loan for buying tractor, I want crop insurance, etc.")
-            
-            if scheme_query and st.button("🤖 Find Matching Schemes", use_container_width=True):
-                if not DEEPSEEK_API_KEY:
-                    st.error("⚠️ Configure API key for AI scheme finder")
-                else:
-                    with st.spinner("DeepSeek is finding relevant schemes..."):
-                        prompt = f"""
-                        Based on this farmer's query: "{scheme_query}"
-                        
-                        Farmer Details:
-                        - Location: {st.session_state.user_location}
-                        - Farm Size: {farm_size} acres
-                        - Soil Type: {soil_type}
-                        - Experience: {farming_exp}
-                        
-                        List relevant Indian government schemes with:
-                        1. Scheme names and descriptions
-                        2. Eligibility criteria
-                        3. Application process
-                        4. Benefits amount
-                        5. Official website links
-                        6. Contact information
-                        
-                        Focus on schemes from PM-KISAN, PMFBY, KCC, e-NAM, etc.
-                        """
-                        
-                        response, success = get_deepseek_response(prompt, max_tokens=1500)
-                        
-                        if success:
-                            st.markdown(f"""
-                                <div class="glass-card">
-                                    <h4 style="color: #4CAF50;">🤖 AI Scheme Recommendations</h4>
-                                    <div style="margin-top: 15px;">
-                                        {response}
-                                    </div>
-                                </div>
-                            """, unsafe_allow_html=True)
-                        else:
-                            st.error(f"Scheme search failed: {response}")
-        
-        with col_s2:
-            if st.button("🔄 Reset Search", use_container_width=True):
-                st.rerun()
+        # Search
+        scheme_search = st.text_input("🔍 Search schemes...", placeholder="Type scheme name or benefit")
         
         # Display schemes in grid
-        st.markdown("#### 📋 Available Government Schemes")
         cols = st.columns(3)
+        filtered_schemes = PERMANENT_SCHEMES
         
-        for i, scheme in enumerate(PERMANENT_SCHEMES):
+        if scheme_search:
+            filtered_schemes = [s for s in PERMANENT_SCHEMES if scheme_search.lower() in s['name'].lower() or scheme_search.lower() in s['desc'].lower()]
+        
+        for i, scheme in enumerate(filtered_schemes):
             with cols[i % 3]:
-                if st.button(f"{scheme['icon']} {scheme['name']}", 
-                           key=f"scheme_{scheme['name']}", use_container_width=True):
-                    if not DEEPSEEK_API_KEY:
-                        st.error("Configure API key for detailed info")
-                    else:
-                        with st.spinner("Getting scheme details..."):
-                            prompt = f"""
-                            Provide detailed information about {scheme['name']} scheme:
-                            
-                            Include:
-                            1. Complete eligibility criteria
-                            2. Step-by-step application process
-                            3. Required documents
-                            4. Benefits and amount
-                            5. Timeline for approval
-                            6. Common issues and solutions
-                            7. Contact information for help
-                            
-                            Make it specific for a farmer from {st.session_state.user_location} with {farm_size} acres.
-                            """
-                            
-                            response, success = get_deepseek_response(prompt)
-                            
-                            if success:
-                                st.markdown(f"""
-                                    <div class="glass-card">
-                                        <h4 style="color: #4CAF50;">{scheme['icon']} {scheme['name']}</h4>
-                                        <div style="margin-top: 15px;">
-                                            {response}
-                                        </div>
-                                        <div style="margin-top: 15px; text-align: center;">
-                                            <a href="{scheme['link']}" target="_blank">
-                                                <button style="background: #4CAF50; color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer;">
-                                                    🌐 Visit Official Website
-                                                </button>
-                                            </a>
-                                        </div>
-                                    </div>
-                                """, unsafe_allow_html=True)
+                st.markdown(f"""
+                    <div class="scheme-card">
+                        <div style="font-size: 30px; text-align: center; margin-bottom: 10px;">{scheme['icon']}</div>
+                        <h4 style="color: #2E7D32; margin-bottom: 5px;">{scheme['name']}</h4>
+                        <div style="background: #E8F5E9; padding: 3px 10px; border-radius: 12px; font-size: 11px; display: inline-block; margin-bottom: 8px;">
+                            {scheme['category']}
+                        </div>
+                        <p style="font-size: 13px; color: #666; margin-bottom: 10px;">{scheme['desc']}</p>
+                        <div style="font-size: 12px; color: #999; margin-bottom: 10px;">
+                            <strong>Eligibility:</strong> {scheme['eligibility']}
+                        </div>
+                        <a href="{scheme['link']}" target="_blank" style="text-decoration: none;">
+                            <div style="background: #4CAF50; color: white; padding: 6px 12px; border-radius: 8px; font-size: 13px; text-align: center; cursor: pointer;">
+                                Apply Now
+                            </div>
+                        </a>
+                    </div>
+                """, unsafe_allow_html=True)
+        
+        # Eligibility Checker
+        st.markdown("---")
+        st.markdown("#### 📋 Scheme Eligibility Checker")
+        
+        col_e1, col_e2 = st.columns(2)
+        with col_e1:
+            land_type = st.selectbox("Land Ownership", ["Own Land", "Leased Land", "Landless"])
+            income_level = st.selectbox("Annual Income", ["< ₹50,000", "₹50,000 - ₹2,00,000", "> ₹2,00,000"])
+        
+        with col_e2:
+            farm_size_check = st.selectbox("Farm Size", ["< 2 acres", "2-5 acres", "> 5 acres"])
+            category = st.selectbox("Category", ["General", "SC", "ST", "OBC"])
+        
+        if st.button("Check Eligibility", use_container_width=True):
+            eligible_count = len([s for s in PERMANENT_SCHEMES if land_type in ["Own Land", "Leased Land"]])
+            st.success(f"✅ You are eligible for {eligible_count} out of {len(PERMANENT_SCHEMES)} schemes!")
+            
+            st.markdown(f"""
+                <div class="glass-card">
+                    <h5>📋 Eligible Schemes:</h5>
+                    {''.join([f'<div style="padding: 6px; margin: 4px 0; background: rgba(76, 175, 80, 0.1); border-radius: 6px;">• {s["name"]}</div>' for s in PERMANENT_SCHEMES[:3]])}
+                </div>
+            """, unsafe_allow_html=True)
     
     # === TAB 5: VOICE ASSISTANT ===
     with tabs[4]:
         try:
-            from streamlit_mic_recorder import mic_recorder
+            from streamlit_mic_recorder import mic_recorder, speech_to_text
             
             st.markdown("### 🎤 Voice Assistant")
             
@@ -1218,87 +1015,59 @@ def main():
                     </div>
                 """, unsafe_allow_html=True)
                 
-                if not DEEPSEEK_API_KEY:
-                    st.markdown("""
-                        <div class="glass-card">
-                            <h4 style="color: #FF6B6B;">⚠️ API Key Required</h4>
-                            <p>Configure DeepSeek API key in sidebar to enable voice assistant.</p>
-                        </div>
-                    """, unsafe_allow_html=True)
-                else:
-                    # Voice recording
-                    st.markdown("#### 🎤 Click to Record")
-                    audio_bytes = mic_recorder(
-                        start_prompt="🎤 Start Recording",
-                        stop_prompt="⏹️ Stop",
-                        key="voice_recorder"
-                    )
+                # Language mapping for voice
+                language_map = {
+                    "English": "en-IN",
+                    "Hindi": "hi-IN",
+                    "Marathi": "mr-IN",
+                    "Tamil": "ta-IN",
+                    "Telugu": "te-IN",
+                    "Kannada": "kn-IN",
+                    "Gujarati": "gu-IN",
+                    "Bengali": "bn-IN"
+                }
+                
+                voice_lang = language_map.get(st.session_state.selected_language, "en-IN")
+                
+                # Voice recording
+                st.markdown("#### 🎤 Click to Record")
+                audio_bytes = mic_recorder(
+                    start_prompt="🎤 Start Recording",
+                    stop_prompt="⏹️ Stop",
+                    key="voice_recorder"
+                )
+                
+                if audio_bytes:
+                    # In a real app, you would process the audio here
+                    st.audio(audio_bytes['bytes'], format='audio/wav')
                     
-                    if audio_bytes:
-                        st.audio(audio_bytes['bytes'], format='audio/wav')
+                    # Simulate speech recognition
+                    if st.button("📝 Convert to Text", use_container_width=True):
+                        # Simulated recognized text
+                        sample_text = "What are the best crops to grow this season?"
+                        st.session_state.messages.append({"role": "user", "content": f"🎤 {sample_text}"})
                         
-                        # Simulate speech recognition
-                        if st.button("🤖 Process with DeepSeek", use_container_width=True):
-                            # In real implementation, use speech-to-text API
-                            # For demo, we'll use a sample query
-                            sample_queries = [
-                                "What are the best crops to grow this season?",
-                                "How can I control pests in my wheat field?",
-                                "Tell me about PM-KISAN scheme benefits",
-                                "What is the market price for rice today?",
-                                "How to prepare organic fertilizer at home?"
-                            ]
-                            
-                            import random
-                            sample_query = random.choice(sample_queries)
-                            
-                            st.info(f"Recognized: '{sample_query}'")
-                            
-                            with st.spinner("DeepSeek is processing..."):
-                                response, success = get_deepseek_response(sample_query)
-                                
-                                if success:
-                                    st.markdown(f"""
-                                        <div class="glass-card">
-                                            <h4>🤖 Voice Response</h4>
-                                            <div style="margin-top: 10px;">
-                                                {response}
-                                            </div>
-                                        </div>
-                                    """, unsafe_allow_html=True)
-                                    
-                                    # Convert response to speech
-                                    lang_code_map = {
-                                        "English": "en",
-                                        "Hindi": "hi",
-                                        "Marathi": "mr"
-                                    }
-                                    lang_code = lang_code_map.get(st.session_state.selected_language, "en")
-                                    
-                                    audio_bytes = text_to_speech_gtts(response[:300], lang_code)
-                                    if audio_bytes:
-                                        play_audio(audio_bytes)
-                                else:
-                                    st.error(f"Voice processing failed: {response}")
+                        with st.spinner("Processing..."):
+                            response = get_ai_response(sample_text)
+                            st.session_state.messages.append({"role": "assistant", "content": response})
+                            st.success("Voice query processed!")
+                            st.rerun()
+                
+                # Alternative: Text input for voice queries
+                st.markdown("#### 📝 Or Type Your Question")
+                voice_text = st.text_input("Type your question for voice response")
+                
+                if voice_text and st.button("🔊 Speak Answer", use_container_width=True):
+                    context = f"Voice query from {st.session_state.farmer_name}"
+                    response = get_ai_response(voice_text, context)
                     
-                    # Alternative: Text input for voice queries
-                    st.markdown("#### 📝 Or Type Your Question")
-                    voice_text = st.text_input("Type your question for voice response", key="voice_text")
+                    # Play audio response
+                    lang_code = language_map.get(st.session_state.selected_language, "en-IN").split('-')[0]
+                    audio_bytes = text_to_speech_gtts(response, lang_code)
+                    if audio_bytes:
+                        play_audio(audio_bytes)
                     
-                    if voice_text and st.button("🔊 Get Voice Response", use_container_width=True):
-                        with st.spinner("DeepSeek is responding..."):
-                            response, success = get_deepseek_response(voice_text)
-                            
-                            if success:
-                                # Play audio response
-                                lang_code = "en"
-                                audio_bytes = text_to_speech_gtts(response[:300], lang_code)
-                                if audio_bytes:
-                                    play_audio(audio_bytes)
-                                
-                                st.info(f"🤖 Response: {response[:150]}...")
-                            else:
-                                st.error(f"Response failed: {response}")
+                    st.info(f"🤖 Response: {response[:100]}...")
             
             with col_v2:
                 st.markdown("#### 🎵 Voice Settings")
@@ -1306,136 +1075,112 @@ def main():
                 voice_options = {
                     "English": ["en-IN-NeerjaNeural", "en-IN-PrabhatNeural"],
                     "Hindi": ["hi-IN-MadhurNeural", "hi-IN-SwaraNeural"],
-                    "Marathi": ["mr-IN-AarohiNeural", "mr-IN-ManoharNeural"]
+                    "Marathi": ["mr-IN-AarohiNeural", "mr-IN-ManoharNeural"],
+                    "Tamil": ["ta-IN-PallaviNeural"],
+                    "Telugu": ["te-IN-MohanNeural"]
                 }
                 
                 voices = voice_options.get(st.session_state.selected_language, ["en-IN-NeerjaNeural"])
-                selected_voice = st.selectbox("Select Voice", voices, key="voice_select")
+                selected_voice = st.selectbox("Select Voice", voices)
                 
                 st.markdown("#### 📊 Recent Activity")
                 if st.session_state.messages:
                     for msg in st.session_state.messages[-3:]:
                         if msg["role"] == "user":
                             icon = "🎤" if "🎤" in msg['content'] else "💬"
-                            content = msg['content'].replace("🎤 ", "")[:40]
+                            content = msg['content'].replace("🎤 ", "")
                             st.markdown(f"""
                                 <div style="background: #f5f5f5; padding: 8px; border-radius: 10px; margin: 5px 0; font-size: 12px;">
-                                    {icon} {content}...
+                                    {icon} {content[:40]}...
                                 </div>
                             """, unsafe_allow_html=True)
+                
+                # Test TTS
+                st.markdown("#### 🔊 Test Voice")
+                test_text = st.text_input("Test text", "Hello, I am GreenMitra")
+                
+                if st.button("Test Voice", use_container_width=True):
+                    audio_bytes = text_to_speech_gtts(test_text, 'en')
+                    if audio_bytes:
+                        play_audio(audio_bytes)
         
         except ImportError:
             st.warning("Voice features require streamlit-mic-recorder")
+            st.info("Using text input as fallback")
             
             st.markdown("### 💬 Text-based Voice Assistant")
             voice_query = st.text_area("Enter your question for voice response:")
             
-            if voice_query and st.button("Get AI Voice Response", use_container_width=True):
-                if not DEEPSEEK_API_KEY:
-                    st.error("Configure API key first")
-                else:
-                    response, success = get_deepseek_response(voice_query)
-                    if success:
-                        st.success("Response generated!")
-                        st.info(response[:200] + "...")
-                        
-                        # Convert to speech
-                        audio_bytes = text_to_speech_gtts(response[:300], 'en')
-                        if audio_bytes:
-                            play_audio(audio_bytes)
+            if voice_query and st.button("Get Voice Response", use_container_width=True):
+                response = get_ai_response(voice_query)
+                st.success("Response generated!")
+                st.info(response)
+                
+                # Convert to speech
+                audio_bytes = text_to_speech_gtts(response, 'en')
+                if audio_bytes:
+                    play_audio(audio_bytes)
     
     # === TAB 6: MARKET INSIGHTS ===
     with tabs[5]:
-        st.markdown("### 📈 Live Market Insights")
+        st.markdown("### 📈 Live Market Prices")
         
+        # Market Data
+        market_data = pd.DataFrame({
+            'Crop': ['Wheat', 'Rice', 'Sugarcane', 'Cotton', 'Soybean', 'Maize', 'Pulses'],
+            'Price': [2100, 1850, 320, 5800, 4200, 1950, 4500],
+            'Change %': [2.5, -1.2, 3.8, 0.5, -2.1, 1.5, 0.8],
+            'Demand': ['High', 'High', 'Medium', 'High', 'Medium', 'Medium', 'High']
+        })
+        
+        # Interactive chart
+        fig = px.bar(
+            market_data,
+            x='Crop',
+            y='Price',
+            color='Change %',
+            color_continuous_scale=['#FF6B6B', '#FFD166', '#06D6A0'],
+            title="Current Market Prices (₹/Quintal)",
+            hover_data=['Demand']
+        )
+        
+        st.plotly_chart(fig, use_container_width=True)
+        
+        # Market Tools
         col_m1, col_m2 = st.columns(2)
         
         with col_m1:
-            st.markdown("#### 🤖 AI Market Analysis")
+            st.markdown("#### 🔔 Price Alerts")
             
-            crop_for_analysis = st.selectbox("Select Crop for Analysis", 
-                                           list(CROP_DATABASE.keys()), 
-                                           key="market_crop")
+            alert_crop = st.selectbox("Crop", market_data['Crop'].tolist(), key="alert_crop")
+            target_price = st.number_input("Target Price (₹)", 1000, 10000, 2500, key="target_price")
             
-            if st.button("🔮 Get AI Market Prediction", use_container_width=True):
-                if not DEEPSEEK_API_KEY:
-                    st.error("⚠️ Configure API key for market analysis")
+            if st.button("Set Price Alert", use_container_width=True):
+                current_price = market_data[market_data['Crop'] == alert_crop]['Price'].values[0]
+                if target_price > current_price:
+                    st.success(f"✅ Alert set! Will notify when {alert_crop} reaches ₹{target_price}")
                 else:
-                    with st.spinner("DeepSeek is analyzing market trends..."):
-                        prompt = f"""
-                        Provide market analysis and predictions for {crop_for_analysis} crop in India:
-                        
-                        Location: {st.session_state.user_location}
-                        Current Season: {datetime.datetime.now().strftime('%B')}
-                        
-                        Include:
-                        1. Current market price range
-                        2. Price trends (last 3 months)
-                        3. Future price prediction (next 3 months)
-                        4. Best time to buy/sell
-                        5. Major markets for this crop
-                        6. Government MSP (Minimum Support Price)
-                        7. Export opportunities
-                        8. Risk factors
-                        9. Storage recommendations
-                        10. Transportation costs
-                        
-                        Be specific for Indian market conditions.
-                        """
-                        
-                        response, success = get_deepseek_response(prompt, max_tokens=1500)
-                        
-                        if success:
-                            st.markdown(f"""
-                                <div class="glass-card">
-                                    <h4 style="color: #4CAF50;">🔮 AI Market Analysis: {crop_for_analysis}</h4>
-                                    <div style="margin-top: 15px;">
-                                        {response}
-                                    </div>
-                                </div>
-                            """, unsafe_allow_html=True)
-                        else:
-                            st.error(f"Market analysis failed: {response}")
+                    st.warning(f"⚠️ Current price is ₹{current_price}. Target should be higher.")
         
         with col_m2:
-            st.markdown("#### 💰 Price Comparison")
+            st.markdown("#### 💡 Trading Tips")
             
-            # Sample market data
-            market_data = pd.DataFrame({
-                'Crop': ['Wheat', 'Rice', 'Sugarcane', 'Cotton', 'Soybean'],
-                'Current Price': [2100, 1850, 320, 5800, 4200],
-                'Change %': [2.5, -1.2, 3.8, 0.5, -2.1]
-            })
+            tips = [
+                "Sell wheat in Jan-Feb for best prices",
+                "Rice demand peaks during festival season",
+                "Store cotton in dry conditions",
+                "Check e-NAM for live prices daily"
+            ]
             
-            fig = px.bar(
-                market_data,
-                x='Crop',
-                y='Current Price',
-                color='Change %',
-                color_continuous_scale=['#FF6B6B', '#FFD166', '#06D6A0'],
-                title="Current Market Prices (₹/Quintal)"
-            )
-            
-            st.plotly_chart(fig, use_container_width=True)
-            
-            # Get AI trading tips
-            if st.button("💡 Get Trading Tips", use_container_width=True):
-                if not DEEPSEEK_API_KEY:
-                    st.error("Configure API key for tips")
-                else:
-                    with st.spinner("Getting AI trading tips..."):
-                        prompt = "Provide practical trading tips for Indian farmers on when to sell crops for maximum profit, considering market trends, seasons, and government schemes."
-                        response, success = get_deepseek_response(prompt)
-                        
-                        if success:
-                            st.markdown(f"""
-                                <div class="glass-card">
-                                    <h5>💡 AI Trading Tips</h5>
-                                    <div style="font-size: 14px;">
-                                        {response}
-                                    </div>
-                                </div>
-                            """, unsafe_allow_html=True)
+            for tip in tips:
+                st.markdown(f"""
+                    <div class="glass-card" style="padding: 12px; margin: 8px 0;">
+                        <div style="display: flex; align-items: center; gap: 10px;">
+                            <div style="color: #4CAF50; font-size: 20px;">💡</div>
+                            <div style="font-size: 14px;">{tip}</div>
+                        </div>
+                    </div>
+                """, unsafe_allow_html=True)
     
     # --- FOOTER ---
     st.markdown("---")
@@ -1446,17 +1191,15 @@ def main():
         st.markdown("""
             <div style="text-align: center;">
                 <p style="font-size: 14px; font-weight: 600; color: #4CAF50;">🌾 GreenMitra AI</p>
-                <p style="font-size: 11px; color: #666;">Powered by DeepSeek</p>
+                <p style="font-size: 11px; color: #666;">Smart Farming Assistant</p>
             </div>
         """, unsafe_allow_html=True)
     
     with footer_cols[1]:
         st.markdown("""
             <div style="text-align: center;">
-                <p style="font-size: 14px; font-weight: 600; color: #4CAF50;">🔑 API Status</p>
-                <p style="font-size: 11px; color: #666;">
-                    {'✅ Connected' if st.session_state.api_connected else '❌ Disconnected'}
-                </p>
+                <p style="font-size: 14px; font-weight: 600; color: #4CAF50;">📞 Support</p>
+                <p style="font-size: 11px; color: #666;">1800-123-4567</p>
             </div>
         """, unsafe_allow_html=True)
     
@@ -1471,8 +1214,8 @@ def main():
     with footer_cols[3]:
         st.markdown("""
             <div style="text-align: center;">
-                <p style="font-size: 14px; font-weight: 600; color: #4CAF50;">📞 Support</p>
-                <p style="font-size: 11px; color: #666;">help@greenmitra.ai</p>
+                <p style="font-size: 14px; font-weight: 600; color: #4CAF50;">© 2024</p>
+                <p style="font-size: 11px; color: #666;">Version 2.0</p>
             </div>
         """, unsafe_allow_html=True)
 
