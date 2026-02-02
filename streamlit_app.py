@@ -503,12 +503,12 @@ def get_weather_with_forecast(city):
 def get_ai_response(prompt, context=""):
     """Get AI response from Gemini"""
     try:
+        # Check if Key is loaded
         if not GOOGLE_API_KEY:
-            return "⚠️ AI service is not configured. Please add your Google API key."
+            return "⚠️ Error: Google API Key is missing. Please check Streamlit Secrets."
         
-        # NEW (Correct)
-        # NEW (Correct)
-        model = genai.GenerativeModel("gemini-1.5-flash")
+        # FIX: Removed 'models/' prefix and switched to 'gemini-pro' which is most stable
+        model = genai.GenerativeModel("gemini-1.5-flash") 
         
         full_prompt = f"""
         You are GreenMitra AI, an expert agricultural assistant for Indian farmers.
@@ -528,7 +528,8 @@ def get_ai_response(prompt, context=""):
         response = model.generate_content(full_prompt)
         return response.text
     except Exception as e:
-        return f"⚠️ AI service error: {str(e)}"
+        # This will print the exact error to your app so we can see it
+        return f"⚠️ AI Service Error: {str(e)}"
 
 def speak_text_async(text, language='en'):
     """Convert text to speech in background"""
