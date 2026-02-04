@@ -1,13 +1,9 @@
-streamlit>=1.28
-google-genai>=0.3.0  # NEW SDK - NOT google-generativeai
-plotly>=5.18
-pandas>=2.0
-numpy>=1.24
-Pillow>=10.0
-gtts>=2.4
-edge-tts>=6.1
-folium>=0.15
-streamlit-folium>=0.18
-geopy>=2.4
-feedparser>=6.0
-requests>=2.31
+streamlit
+google-generativeai
+requests
+feedparser
+plotly
+pandas
+numpy
+Pillow
+gTTS
